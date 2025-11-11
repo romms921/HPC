@@ -213,12 +213,15 @@ def rms_extract(model_ver, model_path):
             for i in range(len(out_point)):
                 if obs_point.at[i, 'td'] == 0:
                     percentage_errors_td.insert(i, 0)
-            out_point['td_percentage_error'] = percentage_errors_td
             avg_percentage_error_td = np.mean(percentage_errors_td) if percentage_errors_td else 0
             td_rms = np.sqrt(np.sum(out_point['td_rms']**2) / len(out_point))
+    else:
+        td_rms = None
+        percentage_errors_td = None
+        avg_percentage_error_td = None
     
     td_vals = list(out_point['td']) if time_delay else None
-    return pos_rms, mag_rms, chi2_value, source_params, lens_params_dict, hubble_val, td_vals
+    return pos_rms, image_rms, mag_rms, flux_rms, percentage_errors, avg_percentage_error, chi2_value, source_params, lens_params_dict, hubble_val, td_vals, td_rms, percentage_errors_td, avg_percentage_error_td
 
 def run_single_model(params, worker_temp_dir):
     # This function no longer creates/deletes the temp dir, it just uses it.
@@ -256,13 +259,16 @@ def run_single_model(params, worker_temp_dir):
         for key in ["MKL_NUM_THREADS", "OMP_NUM_THREADS"]: env[key] = "1"
         subprocess.run(['python3', temp_input_py_file], env=env, check=True, capture_output=True, text=True)
         
-        pos_rms, mag_rms, chi2, source, lens_params, hubble_val, td_vals = rms_extract(model_name, worker_temp_dir)
+        pos_rms, image_rms, mag_rms, flux_rms, percentage_errors, avg_percentage_error, chi2, source, lens_params, hubble_val, td_vals, td_rms, percentage_errors_td, avg_percentage_error_td = rms_extract(model_name, worker_temp_dir)
         
         out_point_file = os.path.join(worker_temp_dir, f'{model_name}_point.dat')
         num_images = sum(1 for line in open(out_point_file) if line.strip()) - 1 if os.path.exists(out_point_file) else 0
         
-        result_dict = {'m': m_val, 'n': n_val, 'o': o_val, 'num_images': num_images, 'pos_rms': pos_rms, 'mag_rms': mag_rms, 'chi2': chi2, 'source_x': source[0][1] if source else 0, 'source_y': source[0][2] if source else 0}
+        result_dict = {'m': m_val, 'n': n_val, 'o': o_val, 'num_images': num_images, 'pos_rms': pos_rms, 'pos':image_rms, 'mag_rms': mag_rms, 'mag':flux_rms, 'mag_per': percentage_errors, 'avg_mag_per': avg_percentage_error, 'chi2': chi2, 'source_x': source[0][1] if source else 0, 'source_y': source[0][2] if source else 0}
         if time_delay and td_vals is not None: result_dict['time_delays'] = ';'.join(map(str, td_vals))
+        if time_delay and td_rms is not None: result_dict['td_rms'] = td_rms
+        if time_delay and percentage_errors_td is not None: result_dict['td_per'] = percentage_errors_td
+        if time_delay and avg_percentage_error_td is not None: result_dict['avg_td_per'] = avg_percentage_error_td
         if h0 and hubble_val is not None: result_dict['h0'] = hubble_val
 
         for lens_name, params in lens_params.items():
