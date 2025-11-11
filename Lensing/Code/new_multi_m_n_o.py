@@ -12,7 +12,7 @@ import time
 # --- File Paths & Parameters ---
 model_output_base = '/home/rommulus/Projects/itng_lensing/Simulations/Output'
 base_results_path = '/home/rommulus/Projects/itng_lensing/Simulations/Input/System_2'
-obs_point_file = os.path.join(base_results_path, 'pos_point.dat')
+obs_point_file = os.path.join(base_results_path, 'pos+flux+td_point.dat')
 SCRATCH_DIR = os.getenv('SCRATCH_DIR', '/tmp')
 
 # --- Simulation Parameters ---
@@ -215,13 +215,14 @@ def rms_extract(model_ver, model_path):
                 if obs_point.at[i, 'td'] == 0:
                     percentage_errors_td.insert(i, 0)
             avg_percentage_error_td = np.mean(percentage_errors_td) if percentage_errors_td else 0
+            percentage_errors_td = np.array(percentage_errors_td)
             td_rms = np.sqrt(np.sum(out_point['td_rms']**2) / len(out_point))
     else:
         td_rms = None
         percentage_errors_td = None
         avg_percentage_error_td = None
     
-    td_vals = list(out_point['td']) if time_delay else None
+    td_vals = np.array(out_point['td']) if time_delay else None
     return pos_rms, image_rms, mag_rms, flux_rms, percentage_errors, avg_percentage_error, chi2_value, source_params, lens_params_dict, hubble_val, td_vals, td_rms, percentage_errors_td, avg_percentage_error_td
 
 def run_single_model(params, worker_temp_dir):
