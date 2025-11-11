@@ -100,10 +100,10 @@ def rms_extract(model_ver, model_path):
     brightest_index = obs_point['mag'].idxmax()
     obs_point.at[brightest_index, 'Img'] = 'A'
     assign_image_names(obs_point, brightest_index)
-    n_img = len(obs_point)
     out_point_file = os.path.join(model_path, f'{model_ver}_point.dat')
     out_point = pd.read_csv(out_point_file, sep='\s+', header=None, skiprows=1, names=['x', 'y', 'mag', 'td', 'col5', 'col6', 'col7', 'col8'])
     num_pred_images = len(out_point)
+    n_img = len(obs_point)
 
     if num_pred_images > n_img:
         distance_matrix = np.zeros((n_img, num_pred_images))
@@ -173,12 +173,30 @@ def rms_extract(model_ver, model_path):
         out_point = out_point.iloc[matched_pred_indices].reset_index(drop=True)
         out_point['Img'] = [obs_point.at[obs_idx, 'Img'] for obs_idx, _ in matches]
     
+    obs_point = obs_point.sort_values(by='Img').reset_index(drop=True)
+    out_point = out_point.sort_values(by='Img').reset_index(drop=True)
+
+    if n_img == num_pred_images:
+        image_rms = []
+        for i in range(n_img):
+            dist = np.sqrt((obs_point.at[i, 'x'] - out_point.at[i, 'x'])**2 + (obs_point.at[i, 'y'] - out_point.at[i, 'y'])**2)
+            image_rms.append(dist)
+            pos_rms = np.sqrt(np.sum(np.array(image_rms)**2) / n_img)
+        out_point['pos_rms'] = image_rms
+    elif n_img > num_pred_images:
+        image_rms = []
+        for i in range(num_pred_images):
+            obs_row = obs_point[obs_point['Img'] == out_point.at[i, 'Img']].iloc[0]
+            dist = np.sqrt((obs_row['x'] - out_point.at[i, 'x'])**2 + (obs_row['y'] - out_point.at[i, 'y'])**2)
+            image_rms.append(dist)
+            pos_rms = np.sqrt(np.sum(np.array(image_rms)**2) / num_pred_images)
+        out_point['pos_rms'] = image_rms
+    
     td_vals = list(out_point['td']) if time_delay else None
     out_point['x_diff'] = abs(out_point['x'] - obs_point['x'])
     out_point['y_diff'] = abs(out_point['y'] - obs_point['y'])
     out_point['mag_diff'] = abs(abs(out_point['mag']) - abs(obs_point['mag']))
     out_point['pos_sq'] = np.sqrt((out_point['x_diff']**2 + out_point['y_diff']**2).astype(float))
-    pos_rms = np.average(out_point['pos_sq'])
     mag_rms = np.average(np.sqrt((out_point['mag_diff']**2).astype(float)))
     return pos_rms, mag_rms, chi2_value, source_params, lens_params_dict, hubble_val, td_vals
 
