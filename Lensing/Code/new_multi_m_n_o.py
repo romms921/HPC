@@ -204,13 +204,20 @@ def rms_extract(model_ver, model_path):
         perc_error = abs((out_point.at[i, 'mag'] - obs_point.at[i, 'mag']) / obs_point.at[i, 'mag']) * 100
         percentage_errors.append(perc_error)
     avg_percentage_error = np.mean(percentage_errors)
+
+    if time_delay:
+            for i in range(len(out_point)):
+                diff = out_point.at[i, 'td'] - obs_point.at[i, 'td']
+                out_point.at[i, 'td_rms'] = diff
+            percentage_errors_td = [abs(out_point.at[i, 'td_rms'] / obs_point.at[i, 'td']) * 100 for i in range(len(out_point)) if obs_point.at[i, 'td'] != 0]
+            for i in range(len(out_point)):
+                if obs_point.at[i, 'td'] == 0:
+                    percentage_errors_td.insert(i, 0)
+            out_point['td_percentage_error'] = percentage_errors_td
+            avg_percentage_error_td = np.mean(percentage_errors_td) if percentage_errors_td else 0
+            td_rms = np.sqrt(np.sum(out_point['td_rms']**2) / len(out_point))
     
     td_vals = list(out_point['td']) if time_delay else None
-    out_point['x_diff'] = abs(out_point['x'] - obs_point['x'])
-    out_point['y_diff'] = abs(out_point['y'] - obs_point['y'])
-    out_point['mag_diff'] = abs(abs(out_point['mag']) - abs(obs_point['mag']))
-    out_point['pos_sq'] = np.sqrt((out_point['x_diff']**2 + out_point['y_diff']**2).astype(float))
-    mag_rms = np.average(np.sqrt((out_point['mag_diff']**2).astype(float)))
     return pos_rms, mag_rms, chi2_value, source_params, lens_params_dict, hubble_val, td_vals
 
 def run_single_model(params, worker_temp_dir):
