@@ -192,6 +192,19 @@ def rms_extract(model_ver, model_path):
             pos_rms = np.sqrt(np.sum(np.array(image_rms)**2) / num_pred_images)
         out_point['pos_rms'] = image_rms
     
+    flux_rms = []
+    for i in range(len(out_point)):
+        diff = out_point.at[i, 'mag'] - obs_point.at[i, 'mag']
+        flux_rms.append(diff)
+        mag_rms = np.sqrt(np.sum(np.array(flux_rms)**2) / len(out_point))
+
+    # Percentage Errors in Predicted Magnification/Flux
+    percentage_errors = []
+    for i in range(len(out_point)):
+        perc_error = abs((out_point.at[i, 'mag'] - obs_point.at[i, 'mag']) / obs_point.at[i, 'mag']) * 100
+        percentage_errors.append(perc_error)
+    avg_percentage_error = np.mean(percentage_errors)
+    
     td_vals = list(out_point['td']) if time_delay else None
     out_point['x_diff'] = abs(out_point['x'] - obs_point['x'])
     out_point['y_diff'] = abs(out_point['y'] - obs_point['y'])
