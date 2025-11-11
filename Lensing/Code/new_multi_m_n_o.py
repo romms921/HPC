@@ -37,7 +37,7 @@ os.makedirs(progress_status_dir, exist_ok=True)
 
 # --- Performance Tuning ---
 PROGRESS_UPDATE_INTERVAL = 100 # How often to update the status file
-CSV_BATCH_SIZE = 100           # How many results to collect before writing to the CSV
+CSV_BATCH_SIZE = 500           # How many results to collect before writing to the CSV
 
 # --- Parameter definitions ---
 pow_params = ['$z_{s,fid}$', 'x', 'y', 'e', '$θ_{e}$', '$r_{Ein}$', '$\gamma$ (PWI)']
