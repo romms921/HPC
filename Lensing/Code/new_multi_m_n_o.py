@@ -267,7 +267,7 @@ def run_single_model(params, worker_temp_dir):
         
         env = os.environ.copy()
         for key in ["MKL_NUM_THREADS", "OMP_NUM_THREADS"]: env[key] = "1"
-        subprocess.run(['python3', temp_input_py_file], env=env, check=True, capture_output=True, text=True)
+        subprocess.run(['python3', temp_input_py_file], env=env, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         
         pos_rms, image_rms, mag_rms, flux_rms, percentage_errors, avg_percentage_error, chi2, source, lens_params, hubble_val, td_vals, td_rms, percentage_errors_td, avg_percentage_error_td = rms_extract(model_name, worker_temp_dir)
         
