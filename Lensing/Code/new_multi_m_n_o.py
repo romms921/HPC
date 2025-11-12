@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import os
 import subprocess
+import traceback
 import numpy as np
 import pandas as pd
 import re
@@ -176,22 +177,26 @@ def rms_extract(model_ver, model_path):
     obs_point = obs_point.sort_values(by='Img').reset_index(drop=True)
     out_point = out_point.sort_values(by='Img').reset_index(drop=True)
 
-    if n_img == num_pred_images:
-        image_rms = []
-        for i in range(n_img):
-            dist = np.sqrt((obs_point.at[i, 'x'] - out_point.at[i, 'x'])**2 + (obs_point.at[i, 'y'] - out_point.at[i, 'y'])**2)
-            image_rms.append(dist)
-            pos_rms = np.sqrt(np.sum(np.array(image_rms)**2) / n_img)
-    elif n_img > num_pred_images:
-        image_rms = []
-        for i in range(num_pred_images):
-            obs_row = obs_point[obs_point['Img'] == out_point.at[i, 'Img']].iloc[0]
-            dist = np.sqrt((obs_row['x'] - out_point.at[i, 'x'])**2 + (obs_row['y'] - out_point.at[i, 'y'])**2)
-            image_rms.append(dist)
-            pos_rms = np.sqrt(np.sum(np.array(image_rms)**2) / num_pred_images)
+    image_rms = []
+    pos_rms = np.nan
+
+    num_matched_images = len(out_point)
+
+    if num_matched_images > 0:
+        for i in range(num_matched_images):
+            obs_row = obs_point[obs_point['Img'] == out_point.at[i, 'Img']]
+            if not obs_row.empty:
+                dist = np.sqrt((obs_row.iloc[0]['x'] - out_point.at[i, 'x'])**2 + 
+                               (obs_row.iloc[0]['y'] - out_point.at[i, 'y'])**2)
+                image_rms.append(dist)
+
+        if image_rms:
+            pos_rms = np.sqrt(np.sum(np.array(image_rms)**2) / num_matched_images)
+
     image_rms = np.array(image_rms)
 
     flux_rms = []
+    mag_rms = np.nan
     for i in range(len(out_point)):
         diff = abs(abs(out_point.at[i, 'mag']) - abs(obs_point.at[i, 'mag']))
         flux_rms.append(diff)
@@ -206,6 +211,9 @@ def rms_extract(model_ver, model_path):
     avg_percentage_error = np.mean(percentage_errors) if len(percentage_errors) > 0 else 0
     percentage_errors = np.array(percentage_errors)
 
+    percentage_errors_td = []
+    avg_percentage_error_td = None
+    td_rms = None
     if time_delay:
             for i in range(len(out_point)):
                 diff = out_point.at[i, 'td'] - obs_point.at[i, 'td']
@@ -283,13 +291,32 @@ def run_single_model(params, worker_temp_dir):
                     result_dict[col_name] = param_val
 
         return result_dict
+    
+    except subprocess.CalledProcessError as e:
+        print(f"!!! WORKER FAILED on model {model_name} due to a subprocess error.")
+        print(f"!!! Return Code: {e.returncode}")
+        print("--- STDOUT ---")
+        print(e.stdout)
+        print("--- STDERR ---")
+        print(e.stderr)
+        sys.stdout.flush()
+        return None
     except Exception:
+        print(f"!!! WORKER FAILED on model {model_name} due to a Python exception.")
+        traceback.print_exc()
+        sys.stdout.flush()
         return None
     finally:
-        # Clean up only the files for this specific model, not the whole directory
-        for suffix in ['', '_optresult.dat', '_point.dat']:
+        for suffix in ['_optresult.dat', '_point.dat', '.py']:
             f = os.path.join(worker_temp_dir, f"{model_name}{suffix}")
-            if os.path.exists(f): os.remove(f)
+            if os.path.exists(f):
+                try:
+                    os.remove(f)
+                except OSError:
+                    pass
+        temp_input_py_file = os.path.join(worker_temp_dir, "temp_input.py")
+        if os.path.exists(temp_input_py_file):
+            os.remove(temp_input_py_file)
 
 def write_batch_to_csv(batch, csv_file):
     """Helper function to write a batch of results to the CSV."""
