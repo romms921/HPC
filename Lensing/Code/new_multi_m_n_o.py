@@ -27,7 +27,7 @@ o_lens, o_param = 1, 6
 constraint_file = os.path.join(base_results_path, 'pos_point.dat')
 prior_file = os.path.join(base_results_path, 'prior.dat')
 input_py_file = os.path.join(base_results_path, 'pow_input.py')
-time_delay, h0 = True, True
+time_delay, h0 = False, False
 
 # --- Directory setup ---
 final_results_dir = os.path.join(model_output_base, 'individual_results')
@@ -37,7 +37,7 @@ os.makedirs(progress_status_dir, exist_ok=True)
 
 # --- Performance Tuning ---
 PROGRESS_UPDATE_INTERVAL = 100 # How often to update the status file
-CSV_BATCH_SIZE = 500           # How many results to collect before writing to the CSV
+CSV_BATCH_SIZE = 100           # How many results to collect before writing to the CSV
 
 # --- Parameter definitions ---
 pow_params = ['$z_{s,fid}$', 'x', 'y', 'e', '$θ_{e}$', '$r_{Ein}$', '$\gamma$ (PWI)']
@@ -203,7 +203,7 @@ def rms_extract(model_ver, model_path):
     for i in range(len(out_point)):
         perc_error = abs(abs((out_point.at[i, 'mag']) - abs(obs_point.at[i, 'mag']))) / abs(obs_point.at[i, 'mag']) * 100
         percentage_errors.append(perc_error)
-    avg_percentage_error = np.mean(percentage_errors)
+    avg_percentage_error = np.mean(percentage_errors) if len(percentage_errors) > 0 else 0
     percentage_errors = np.array(percentage_errors)
 
     if time_delay:
@@ -214,7 +214,7 @@ def rms_extract(model_ver, model_path):
             for i in range(len(out_point)):
                 if obs_point.at[i, 'td'] == 0:
                     percentage_errors_td.insert(i, 0)
-            avg_percentage_error_td = np.mean(percentage_errors_td) if percentage_errors_td else 0
+            avg_percentage_error_td = np.mean(percentage_errors_td) if len(percentage_errors_td) > 0 else 0
             percentage_errors_td = np.array(percentage_errors_td)
             td_rms = np.sqrt(np.sum(out_point['td_rms']**2) / len(out_point))
     else:
