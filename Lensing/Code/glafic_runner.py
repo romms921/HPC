@@ -259,7 +259,7 @@ def run_glafic_calculation(params, model_name, worker_temp_dir):
     glafic.set_secondary('chi2_checknimg 0', verb=0)
     glafic.set_secondary('chi2_restart   -1', verb=0)
     glafic.set_secondary('chi2_usemag    1', verb=0)
-    glafic.set_secondary('hvary          0' if not h0 else '1', verb=0)
+    glafic.set_secondary('hvary          0', verb=0)
     glafic.set_secondary('ran_seed -122000', verb=0)
     glafic.startup_setnum(1, 0, 1)
     glafic.set_lens(1, 'pow', *current_lens_params)
