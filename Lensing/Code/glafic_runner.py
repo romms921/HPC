@@ -23,7 +23,7 @@ sim_name = 'Sim 8'
 model = 'POW' # Model name for output files
 m = np.linspace(1.5, 2.2, 100)
 n = np.linspace(0.0, 0.9, 100)
-o = np.linspace(0, 360, 100)
+o = np.linspace(0, 360, 10)
 
 m_lens, m_param = 1, 8
 n_lens, n_param = 1, 5
@@ -59,101 +59,188 @@ model_params = {'POW': pow_params, 'SIE': sie_params, 'ANFW': nfw_params, 'PERT'
 def calculate_distance(row1, row2):
     return np.sqrt((row1['x'] - row2['x'])**2 + (row1['y'] - row2['y'])**2)
 
-def assign_image_names(df):
-    if df.empty or 'Img' in df.columns and pd.notna(df['Img']).all():
-        return df
+def assign_image_names(df, start_index):
     names = ['A', 'B', 'C', 'D']
-    if len(df) > len(names): names.extend([f"Img{i+1}" for i in range(len(names), len(df))])
+    current_name_index = 0
+    current_index = start_index
+    assigned_indices = {current_index}
     
-    start_index = df['mag'].idxmax()
-    centroid_x, centroid_y = df['x'].mean(), df['y'].mean()
-    
-    angles = {i: np.arctan2(row['y'] - centroid_y, row['x'] - centroid_x) for i, row in df.iterrows()}
-    sorted_indices = sorted(angles, key=angles.get, reverse=True)
-    
-    start_pos = sorted_indices.index(start_index)
-    
-    final_names = {}
-    for i in range(len(df)):
-        original_index = sorted_indices[(start_pos + i) % len(df)]
-        final_names[original_index] = names[i]
+    while len(assigned_indices) < len(df):
+        current_x, current_y = df.at[current_index, 'x'], df.at[current_index, 'y']
+        next_index = None
+        max_angle = -float('inf')
+        
+        for i in range(len(df)):
+            if i in assigned_indices:
+                continue
+            dx = df.at[i, 'x'] - current_x
+            dy = df.at[i, 'y'] - current_y
+            angle = np.arctan2(dy, dx)
+            if angle > max_angle:
+                max_angle = angle
+                next_index = i
+        
+        if next_index is not None:
+            current_name_index += 1
+            df.at[next_index, 'Img'] = names[current_name_index]
+            assigned_indices.add(next_index)
+            current_index = next_index
 
-    df['Img'] = df.index.map(final_names)
-    return df
+obs_point = pd.read_csv(obs_point_file, sep='\s+', header=None, skiprows=1, names=['x', 'y', 'mag', 'pos_err', 'mag_err', 'td', 'td_err', 'parity'])
+brightest_index = obs_point['mag'].idxmax()
+obs_point.at[brightest_index, 'Img'] = 'A'
+assign_image_names(obs_point, brightest_index)
+n_img = len(obs_point)
 
-def rms_extract(model_ver, model_path, obs_point_df):
-    results = {}
-    
+def rms_extract(model_ver, model_path, obs_point=obs_point):
     opt_result_file = os.path.join(model_path, f'{model_ver}_optresult.dat')
     with open(opt_result_file, 'r') as file: opt_result = file.readlines()
     last_optimize_index = next((i for i, line in reversed(list(enumerate(opt_result))) if 'optimize' in line), None)
     if last_optimize_index is None: raise ValueError("No 'optimize' line found.")
     opt_result = opt_result[last_optimize_index + 1:]
-    
-    lens_params_dict = {re.split(r'\s+', line.strip())[1]: [float(x) for x in re.split(r'\s+', line.strip())[3:]] for line in opt_result if line.startswith('lens')}
+    lens_params_dict = {}
+    for line in opt_result:
+        if line.startswith('lens'):
+            parts = re.split(r'\s+', line.strip())
+            lens_params_dict[parts[1]] = [float(x) for x in parts[3:]]
     source_params = [[float(x) for x in re.split(r'\s+', line.strip())[1:]] for line in opt_result if line.startswith('point')]
     chi2_line = next((line for line in opt_result if 'chi^2' in line), None)
-    
-    results['chi2'] = float(chi2_line.split('=')[-1].strip().split()[0]) if chi2_line else np.nan
-    results['source_x'] = source_params[0][1] if source_params else np.nan
-    results['source_y'] = source_params[0][2] if source_params else np.nan
-    results['lens_params'] = lens_params_dict
-
+    if chi2_line is None: raise ValueError("No 'chi^2' line found.")
+    chi2_value = float(chi2_line.split('=')[-1].strip().split()[0])
+    hubble_val = None
     if h0:
         hubble_line = next((line for line in opt_result if 'hubble =' in line), None)
-        results['h0'] = float(hubble_line.split('=')[-1].strip().split()[0]) if hubble_line else np.nan
-
-    obs_point = assign_image_names(obs_point_df.copy())
+        if hubble_line: hubble_val = float(hubble_line.split('=')[-1].strip().split()[0])
     out_point_file = os.path.join(model_path, f'{model_ver}_point.dat')
-    out_point = pd.read_csv(out_point_file, sep='\s+', header=None, skiprows=1, names=['x', 'y', 'mag', 'td', 'c5', 'c6', 'c7', 'c8'])
+    out_point = pd.read_csv(out_point_file, sep='\s+', header=None, skiprows=1, names=['x', 'y', 'mag', 'td', 'col5', 'col6', 'col7', 'col8'])
+    num_pred_images = len(out_point)
 
-    # Match predicted to observed images robustly
-    merged_df = pd.merge(obs_point.add_prefix('obs_'), out_point.add_prefix('pred_'), how='cross')
-    merged_df['dist'] = np.sqrt((merged_df['obs_x'] - merged_df['pred_x'])**2 + (merged_df['obs_y'] - merged_df['pred_y'])**2)
-    merged_df = merged_df.loc[merged_df.groupby('obs_Img')['dist'].idxmin()]
+    if num_pred_images > n_img:
+        distance_matrix = np.zeros((n_img, num_pred_images))
+        for i in range(n_img):
+            for j in range(num_pred_images):
+                distance_matrix[i, j] = calculate_distance(obs_point.iloc[i], out_point.iloc[j])
 
-    # --- Aggregate and Per-Image Metrics ---
-    results['pos_rms'] = np.sqrt(np.mean(merged_df['dist']**2))
-    results['mag_rms'] = np.sqrt(np.mean((np.abs(merged_df['obs_mag']) - np.abs(merged_df['pred_mag']))**2))
+        matched_indices = np.unravel_index(np.argsort(distance_matrix, axis=None), distance_matrix.shape)
+        matched_pred_indices = set()
+        matched_obs_indices = set()
+        matches = []
+        for obs_idx, pred_idx in zip(*matched_indices):
+            if obs_idx not in matched_obs_indices and pred_idx not in matched_pred_indices:
+                matches.append((obs_idx, pred_idx))
+                matched_obs_indices.add(obs_idx)
+                matched_pred_indices.add(pred_idx)
+            if len(matches) == n_img:
+                break
+
+        matches.sort(key=lambda x: x[0])
+        matched_pred_indices = [pred_idx for _, pred_idx in matches]
+        out_point = out_point.iloc[matched_pred_indices].reset_index(drop=True)
+        out_point['Img'] = obs_point['Img'].values
     
-    # --- PERCENTAGE ERROR CALCULATIONS (RESTORED) ---
-    # Calculate percentage error for magnification
-    mag_abs_obs = np.abs(merged_df['obs_mag'])
-    mag_abs_pred = np.abs(merged_df['pred_mag'])
-    # Avoid division by zero if an observed magnitude is zero
-    mag_perc_err = np.divide(np.abs(mag_abs_pred - mag_abs_obs), mag_abs_obs, out=np.full_like(mag_abs_obs, np.nan), where=mag_abs_obs!=0) * 100
-    results['avg_mag_per'] = np.nanmean(mag_perc_err)
-    
-    # Store per-image results
-    for i, row in merged_df.iterrows():
-        img_name = row['obs_Img']
-        results[f'pos_{img_name}'] = row['dist']
-        results[f'mag_{img_name}'] = row['pred_mag']
-        results[f'mag_err_{img_name}'] = row['pred_mag'] - row['obs_mag']
-        # --- Store per-image percentage error (RESTORED) ---
-        # Find the corresponding percentage error from our calculation above
-        original_index = merged_df.index.get_loc(i)
-        results[f'mag_per_{img_name}'] = mag_perc_err.iloc[original_index]
+    if num_pred_images < n_img:
+        distance_matrix = np.zeros((n_img, num_pred_images))
+        for i in range(n_img):
+            for j in range(num_pred_images):
+                distance_matrix[i, j] = calculate_distance(obs_point.iloc[i], out_point.iloc[j])
 
+        matched_indices = np.unravel_index(np.argsort(distance_matrix, axis=None), distance_matrix.shape)
+        matched_pred_indices = set()
+        matched_obs_indices = set()
+        matches = []
+        for obs_idx, pred_idx in zip(*matched_indices):
+            if obs_idx not in matched_obs_indices and pred_idx not in matched_pred_indices:
+                matches.append((obs_idx, pred_idx))
+                matched_obs_indices.add(obs_idx)
+                matched_pred_indices.add(pred_idx)
+            if len(matches) == num_pred_images:
+                break
+
+        matches.sort(key=lambda x: x[0])
+        matched_pred_indices = [pred_idx for _, pred_idx in matches]
+        out_point = out_point.iloc[matched_pred_indices].reset_index(drop=True)
+        out_point['Img'] = [obs_point.at[obs_idx, 'Img'] for obs_idx, _ in matches]
+
+    if num_pred_images == n_img:
+        distance_matrix = np.zeros((n_img, n_img))
+        for i in range(n_img):
+            for j in range(n_img):
+                distance_matrix[i, j] = calculate_distance(obs_point.iloc[i], out_point.iloc[j])
+        
+        matched_indices = np.unravel_index(np.argsort(distance_matrix, axis=None), distance_matrix.shape)
+        matched_pred_indices = set()
+        matched_obs_indices = set()
+        matches = []
+        for obs_idx, pred_idx in zip(*matched_indices):
+            if obs_idx not in matched_obs_indices and pred_idx not in matched_pred_indices:
+                matches.append((obs_idx, pred_idx))
+                matched_obs_indices.add(obs_idx)
+                matched_pred_indices.add(pred_idx)
+            if len(matches) == n_img:
+                break
+        matches.sort(key=lambda x: x[0])
+        matched_pred_indices = [pred_idx for _, pred_idx in matches]
+        out_point = out_point.iloc[matched_pred_indices].reset_index(drop=True)
+        out_point['Img'] = [obs_point.at[obs_idx, 'Img'] for obs_idx, _ in matches]
+    
+    obs_point = obs_point.sort_values(by='Img').reset_index(drop=True)
+    out_point = out_point.sort_values(by='Img').reset_index(drop=True)
+
+    image_rms = []
+    pos_rms = np.nan
+
+    num_matched_images = len(out_point)
+
+    if num_matched_images > 0:
+        for i in range(num_matched_images):
+            obs_row = obs_point[obs_point['Img'] == out_point.at[i, 'Img']]
+            if not obs_row.empty:
+                dist = np.sqrt((obs_row.iloc[0]['x'] - out_point.at[i, 'x'])**2 + 
+                               (obs_row.iloc[0]['y'] - out_point.at[i, 'y'])**2)
+                image_rms.append(dist)
+
+        if image_rms:
+            pos_rms = np.sqrt(np.sum(np.array(image_rms)**2) / num_matched_images)
+
+    image_rms = np.array(image_rms)
+
+    flux_rms = []
+    mag_rms = np.nan
+    for i in range(len(out_point)):
+        diff = abs(abs(out_point.at[i, 'mag']) - abs(obs_point.at[i, 'mag']))
+        flux_rms.append(diff)
+        mag_rms = np.sqrt(np.sum(np.array(flux_rms)**2) / len(out_point))
+    flux_rms = np.array(flux_rms)
+
+    # Percentage Errors in Predicted Magnification/Flux
+    percentage_errors = []
+    for i in range(len(out_point)):
+        perc_error = abs(abs((out_point.at[i, 'mag']) - abs(obs_point.at[i, 'mag']))) / abs(obs_point.at[i, 'mag']) * 100
+        percentage_errors.append(perc_error)
+    avg_percentage_error = np.mean(percentage_errors) if len(percentage_errors) > 0 else 0
+    percentage_errors = np.array(percentage_errors)
+
+    percentage_errors_td = []
+    avg_percentage_error_td = None
+    td_rms = None
     if time_delay:
-        td_err = merged_df['pred_td'] - merged_df['obs_td']
-        results['td_rms'] = np.sqrt(np.mean(td_err**2))
-
-        # --- TD PERCENTAGE ERROR CALCULATIONS (RESTORED) ---
-        obs_td = merged_df['obs_td']
-        # Avoid division by zero if an observed time delay is zero
-        td_perc_err = np.divide(np.abs(td_err), obs_td, out=np.full_like(obs_td, np.nan), where=obs_td!=0) * 100
-        results['avg_td_per'] = np.nanmean(td_perc_err)
-
-        for i, row in merged_df.iterrows():
-            img_name = row['obs_Img']
-            results[f'td_{img_name}'] = row['pred_td']
-            results[f'td_err_{img_name}'] = row['pred_td'] - row['obs_td']
-            # --- Store per-image TD percentage error (RESTORED) ---
-            original_index = merged_df.index.get_loc(i)
-            results[f'td_per_{img_name}'] = td_perc_err.iloc[original_index]
-            
-    return results
+            for i in range(len(out_point)):
+                diff = out_point.at[i, 'td'] - obs_point.at[i, 'td']
+                out_point.at[i, 'td_rms'] = diff
+            percentage_errors_td = [abs(out_point.at[i, 'td_rms'] / obs_point.at[i, 'td']) * 100 for i in range(len(out_point)) if obs_point.at[i, 'td'] != 0]
+            for i in range(len(out_point)):
+                if obs_point.at[i, 'td'] == 0:
+                    percentage_errors_td.insert(i, 0)
+            avg_percentage_error_td = np.mean(percentage_errors_td) if len(percentage_errors_td) > 0 else 0
+            percentage_errors_td = np.array(percentage_errors_td)
+            td_rms = np.sqrt(np.sum(out_point['td_rms']**2) / len(out_point))
+    else:
+        td_rms = None
+        percentage_errors_td = None
+        avg_percentage_error_td = None
+    
+    td_vals = np.array(out_point['td']) if time_delay else None
+    return pos_rms, image_rms, mag_rms, flux_rms, percentage_errors, avg_percentage_error, chi2_value, source_params, lens_params_dict, hubble_val, td_vals, td_rms, percentage_errors_td, avg_percentage_error_td, out_point
 
 
 def run_glafic_calculation(params, model_name, worker_temp_dir):
@@ -197,27 +284,51 @@ def run_single_model(params, worker_temp_dir, obs_point_df):
     model_name = f'{model}_{m_val}_{n_val}_{o_val}'
 
     try:
+        # Redirect both Python-level and OS-level stdout/stderr to devnull
+        devnull = open(os.devnull, 'w')
+        _saved_stdout_fd = os.dup(1)
+        _saved_stderr_fd = os.dup(2)
+        os.dup2(devnull.fileno(), 1)
+        os.dup2(devnull.fileno(), 2)
+        _saved_stdout = sys.stdout
+        _saved_stderr = sys.stderr
+        sys.stdout = devnull
+        sys.stderr = devnull
         run_glafic_calculation((m_val, n_val, o_val), model_name, worker_temp_dir)
         
-        extracted_results = rms_extract(model_name, worker_temp_dir, obs_point_df)
+        pos_rms, image_rms, mag_rms, flux_rms, percentage_errors, avg_percentage_error, chi2, source, lens_params, hubble_val, td_vals, td_rms, percentage_errors_td, avg_percentage_error_td, out_point = rms_extract(model_name, worker_temp_dir)
         
         out_point_file = os.path.join(worker_temp_dir, f'{model_name}_point.dat')
         num_images = sum(1 for line in open(out_point_file) if line.strip()) - 1 if os.path.exists(out_point_file) else 0
         
-        final_result_dict = {'m': m_val, 'n': n_val, 'o': o_val, 'num_images': num_images}
-        final_result_dict.update(extracted_results)
-        
-        lens_params = final_result_dict.pop('lens_params')
-        for lens_name, lens_p in lens_params.items():
+        result_dict = {'m': m_val, 'n': n_val, 'o': o_val, 'num_images': num_images, 'pos_rms': pos_rms, 'mag_rms': mag_rms, 'avg_mag_per': avg_percentage_error, 'chi2': chi2, 'source_x': source[0][1] if source else 0, 'source_y': source[0][2] if source else 0}
+        for i, row in obs_point.iterrows():
+            image_name = row['Img']
+            result_dict[f'x_{image_name}'] = out_point.at[i, 'x'] if i < len(out_point) else None
+            result_dict[f'y_{image_name}'] = out_point.at[i, 'y'] if i < len(out_point) else None
+            result_dict[f'pos_rms_{image_name}'] = image_rms[i] if i < len(image_rms) else None
+            result_dict[f'mag_rms_{image_name}'] = flux_rms[i] if i < len(flux_rms) else None
+            result_dict[f'mag_per_{image_name}'] = percentage_errors[i] if i < len(percentage_errors) else None
+        if time_delay and td_vals is not None:
+            for i, row in obs_point.iterrows():
+                image_name = row['Img']
+                result_dict[f'td_{image_name}'] = td_vals[i] if i < len(td_vals) else None
+                result_dict[f'td_rms_{image_name}'] = out_point.at[i, 'td_rms'] if i < len(out_point) else None
+                result_dict[f'td_per_{image_name}'] = percentage_errors_td[i] if i < len(percentage_errors_td) else None
+
+        if time_delay and avg_percentage_error_td is not None: result_dict['avg_td_per'] = avg_percentage_error_td
+        if h0 and hubble_val is not None: result_dict['h0'] = hubble_val
+
+        for lens_name, params in lens_params.items():
             model_type = lens_name.upper()
             if model_type not in model_params: continue
             param_names = model_params[model_type]
-            for i, param_val in enumerate(lens_p):
+            for i, param_val in enumerate(params):
                 if i < len(param_names) and param_names[i] != 'NaN':
                     col_name = f"{model_type}_{param_names[i]}"
-                    final_result_dict[col_name] = param_val
+                    result_dict[col_name] = param_val
 
-        return final_result_dict
+        return result_dict
     
     except Exception:
         print(f"!!! WORKER FAILED on model {model_name}.")
@@ -250,8 +361,6 @@ def main():
     output_csv_file = os.path.join(final_results_dir, f"results_rank_{rank}.csv")
     status_file = os.path.join(progress_status_dir, f"worker_{rank}.status")
     
-    obs_point_df = pd.read_csv(obs_point_file, sep='\s+', header=None, skiprows=1, names=['x', 'y', 'mag', 'pos_err', 'mag_err', 'td', 'td_err', 'parity'])
-    
     worker_temp_dir = os.path.join(SCRATCH_DIR, f'worker_temp_{rank}_{uuid.uuid4()}')
     os.makedirs(worker_temp_dir, exist_ok=True)
     
@@ -260,7 +369,7 @@ def main():
     
     try:
         for i, task_params in enumerate(tasks_for_this_worker):
-            result = run_single_model(task_params, worker_temp_dir, obs_point_df)
+            result = run_single_model(task_params, worker_temp_dir, obs_point_df = obs_point)
             
             if result:
                 results_batch.append(result)

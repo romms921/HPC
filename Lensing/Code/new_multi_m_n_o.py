@@ -21,7 +21,7 @@ sim_name = 'Sim 8'
 model = 'POW'
 m = [round(x, 5) for x in np.linspace(1.5, 2.2, 100)]
 n = [round(x, 5) for x in np.linspace(0.0, 0.9, 100)]
-o = [round(x, 5) for x in np.linspace(0, 360, 100)]
+o = [round(x, 5) for x in np.linspace(0, 360, 10)]
 m_lens, m_param = 1, 8
 n_lens, n_param = 1, 5
 o_lens, o_param = 1, 6
@@ -38,7 +38,7 @@ os.makedirs(progress_status_dir, exist_ok=True)
 
 # --- Performance Tuning ---
 PROGRESS_UPDATE_INTERVAL = 100 # How often to update the status file
-CSV_BATCH_SIZE = 100           # How many results to collect before writing to the CSV
+CSV_BATCH_SIZE = 500           # How many results to collect before writing to the CSV
 
 # --- Parameter definitions ---
 pow_params = ['$z_{s,fid}$', 'x', 'y', 'e', '$θ_{e}$', '$r_{Ein}$', '$\gamma$ (PWI)']
@@ -78,7 +78,13 @@ def assign_image_names(df, start_index):
             assigned_indices.add(next_index)
             current_index = next_index
 
-def rms_extract(model_ver, model_path):
+obs_point = pd.read_csv(obs_point_file, sep='\s+', header=None, skiprows=1, names=['x', 'y', 'mag', 'pos_err', 'mag_err', 'td', 'td_err', 'parity'])
+brightest_index = obs_point['mag'].idxmax()
+obs_point.at[brightest_index, 'Img'] = 'A'
+assign_image_names(obs_point, brightest_index)
+n_img = len(obs_point)
+
+def rms_extract(model_ver, model_path, obs_point=obs_point):
     opt_result_file = os.path.join(model_path, f'{model_ver}_optresult.dat')
     with open(opt_result_file, 'r') as file: opt_result = file.readlines()
     last_optimize_index = next((i for i, line in reversed(list(enumerate(opt_result))) if 'optimize' in line), None)
@@ -97,14 +103,9 @@ def rms_extract(model_ver, model_path):
     if h0:
         hubble_line = next((line for line in opt_result if 'hubble =' in line), None)
         if hubble_line: hubble_val = float(hubble_line.split('=')[-1].strip().split()[0])
-    obs_point = pd.read_csv(obs_point_file, sep='\s+', header=None, skiprows=1, names=['x', 'y', 'mag', 'pos_err', 'mag_err', 'td', 'td_err', 'parity'])
-    brightest_index = obs_point['mag'].idxmax()
-    obs_point.at[brightest_index, 'Img'] = 'A'
-    assign_image_names(obs_point, brightest_index)
     out_point_file = os.path.join(model_path, f'{model_ver}_point.dat')
     out_point = pd.read_csv(out_point_file, sep='\s+', header=None, skiprows=1, names=['x', 'y', 'mag', 'td', 'col5', 'col6', 'col7', 'col8'])
     num_pred_images = len(out_point)
-    n_img = len(obs_point)
 
     if num_pred_images > n_img:
         distance_matrix = np.zeros((n_img, num_pred_images))
@@ -231,7 +232,8 @@ def rms_extract(model_ver, model_path):
         avg_percentage_error_td = None
     
     td_vals = np.array(out_point['td']) if time_delay else None
-    return pos_rms, image_rms, mag_rms, flux_rms, percentage_errors, avg_percentage_error, chi2_value, source_params, lens_params_dict, hubble_val, td_vals, td_rms, percentage_errors_td, avg_percentage_error_td
+    return pos_rms, image_rms, mag_rms, flux_rms, percentage_errors, avg_percentage_error, chi2_value, source_params, lens_params_dict, hubble_val, td_vals, td_rms, percentage_errors_td, avg_percentage_error_td, out_point
+
 
 def run_single_model(params, worker_temp_dir):
     # This function no longer creates/deletes the temp dir, it just uses it.
@@ -269,15 +271,26 @@ def run_single_model(params, worker_temp_dir):
         for key in ["MKL_NUM_THREADS", "OMP_NUM_THREADS"]: env[key] = "1"
         subprocess.run(['python3', temp_input_py_file], env=env, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         
-        pos_rms, image_rms, mag_rms, flux_rms, percentage_errors, avg_percentage_error, chi2, source, lens_params, hubble_val, td_vals, td_rms, percentage_errors_td, avg_percentage_error_td = rms_extract(model_name, worker_temp_dir)
+        pos_rms, image_rms, mag_rms, flux_rms, percentage_errors, avg_percentage_error, chi2, source, lens_params, hubble_val, td_vals, td_rms, percentage_errors_td, avg_percentage_error_td, out_point = rms_extract(model_name, worker_temp_dir)
         
         out_point_file = os.path.join(worker_temp_dir, f'{model_name}_point.dat')
         num_images = sum(1 for line in open(out_point_file) if line.strip()) - 1 if os.path.exists(out_point_file) else 0
         
-        result_dict = {'m': m_val, 'n': n_val, 'o': o_val, 'num_images': num_images, 'pos_rms': pos_rms, 'pos':image_rms, 'mag_rms': mag_rms, 'mag':flux_rms, 'mag_per': percentage_errors, 'avg_mag_per': avg_percentage_error, 'chi2': chi2, 'source_x': source[0][1] if source else 0, 'source_y': source[0][2] if source else 0}
-        if time_delay and td_vals is not None: result_dict['time_delays'] = ';'.join(map(str, td_vals))
-        if time_delay and td_rms is not None: result_dict['td_rms'] = td_rms
-        if time_delay and percentage_errors_td is not None: result_dict['td_per'] = percentage_errors_td
+        result_dict = {'m': m_val, 'n': n_val, 'o': o_val, 'num_images': num_images, 'pos_rms': pos_rms, 'mag_rms': mag_rms, 'avg_mag_per': avg_percentage_error, 'chi2': chi2, 'source_x': source[0][1] if source else 0, 'source_y': source[0][2] if source else 0}
+        for i, row in obs_point.iterrows():
+            image_name = row['Img']
+            result_dict[f'x_{image_name}'] = out_point.at[i, 'x'] if i < len(out_point) else None
+            result_dict[f'y_{image_name}'] = out_point.at[i, 'y'] if i < len(out_point) else None
+            result_dict[f'pos_rms_{image_name}'] = image_rms[i] if i < len(image_rms) else None
+            result_dict[f'mag_rms_{image_name}'] = flux_rms[i] if i < len(flux_rms) else None
+            result_dict[f'mag_per_{image_name}'] = percentage_errors[i] if i < len(percentage_errors) else None
+        if time_delay and td_vals is not None:
+            for i, row in obs_point.iterrows():
+                image_name = row['Img']
+                result_dict[f'td_{image_name}'] = td_vals[i] if i < len(td_vals) else None
+                result_dict[f'td_rms_{image_name}'] = out_point.at[i, 'td_rms'] if i < len(out_point) else None
+                result_dict[f'td_per_{image_name}'] = percentage_errors_td[i] if i < len(percentage_errors_td) else None
+
         if time_delay and avg_percentage_error_td is not None: result_dict['avg_td_per'] = avg_percentage_error_td
         if h0 and hubble_val is not None: result_dict['h0'] = hubble_val
 
