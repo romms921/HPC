@@ -360,7 +360,17 @@ def run_single_model(params, worker_temp_dir, obs_point_df):
                     col_name = f"{model_type}_{param_names[i]}"
                     result_dict[col_name] = param_val
         
+        source_x = result_dict['source_x'] 
+        source_y = result_dict['source_y']
+
+        run_base_macro((lens_params[model_name], [source_x, source_y]), model_name + '_base', worker_temp_dir)
+
         
+
+
+
+
+
 
         return result_dict
     
