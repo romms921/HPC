@@ -9,6 +9,7 @@ import shutil
 import uuid
 from itertools import product, islice
 from astropy.io import fits
+import matplotlib.pyplot as plt
 
 # IMPORTANT: Ensure the 'glafic' library is in your Python path
 import glafic
@@ -363,9 +364,22 @@ def run_single_model(params, worker_temp_dir, obs_point_df):
         
         hdu_list = fits.open(os.path.join(worker_temp_dir, f'{model_name}_lens.fits'))
         alphax_tot = hdu_list[0].data[0]
-        alphax_tot = np.array(alphax_tot)
         alphay_tot = hdu_list[0].data[1]
-        alphay_tot = np.array(alphay_tot)
+
+        alpha_tot = np.sqrt(alphax_tot**2 + alphay_tot**2)
+        ny, nx = alpha_tot.shape
+        x = np.arange(nx)
+        y = np.arange(ny)
+        X, Y = np.meshgrid(x, y)
+        U = alphax_tot 
+        V = alphay_tot
+
+        step = max(1, nx // 10)
+        Xs = X[::step, ::step]
+        Ys = Y[::step, ::step]
+        Us = U[::step, ::step]
+        Vs = V[::step, ::step]
+        alphas = alpha_tot[::step, ::step]
 
         source_x = result_dict['source_x'] 
         source_y = result_dict['source_y']
@@ -380,9 +394,35 @@ def run_single_model(params, worker_temp_dir, obs_point_df):
 
         hdu_list_base = fits.open(os.path.join(worker_temp_dir, f'{model_name}_base_lens.fits'))
         alphax_base = hdu_list_base[0].data[0]
-        alphax_base = np.array(alphax_base)
         alphay_base = hdu_list_base[0].data[1]
-        alphay_base = np.array(alphay_base)
+
+        alpha_base = np.sqrt(alphax_base**2 + alphay_base**2)
+        U_base = alphax_base 
+        V_base = alphay_base
+        Us_macro = U_base[::step, ::step]
+        Vs_macro = V_base[::step, ::step]
+        alphas_macro = alpha_base[::step, ::step]
+
+        fig, ax = plt.subplots(figsize=(10, 8))
+
+        plt.subplots_adjust(top=0.9)
+        im = ax.quiver(Xs, Ys, Us, Vs, alphas, cmap='autumn', scale=20, width=0.005)
+        ax.scatter(obs_point['x'], obs_point['y'], color='red', s=50, label='Observed Images')
+        fig.colorbar(im, ax=ax, label='Deflection Angle')
+        ax.set_xlabel('X Position (pixels)'); ax.set_ylabel('Y Position (pixels)')
+        ax.set_title('Deflection Angle Field')
+        ax.set_aspect('equal', adjustable='datalim')
+        plt.tight_layout()
+        plt.show()
+
+        fig, ax = plt.subplots(figsize=(10, 8))
+        im = ax.quiver(Xs, Ys, Us_macro, Vs_macro, alphas_macro, cmap='autumn', scale=20, width=0.005)
+        fig.colorbar(im, ax=ax, label='Deflection Angle')
+        ax.set_xlabel('X Position (pixels)'); ax.set_ylabel('Y Position (pixels)')
+        ax.set_title('Macro Model Deflection Angle Field')
+        ax.set_aspect('equal', adjustable='datalim')
+        plt.tight_layout()
+        plt.show()
 
 
         
