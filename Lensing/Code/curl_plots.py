@@ -21,6 +21,9 @@ SCRATCH_DIR = os.getenv('SCRATCH_DIR', '/tmp')
 # --- Simulation Parameters ---
 sim_name = 'Sim 1'
 model = 'SIE'
+base_lens_params = [0.261343256161012, 1.30e+02, 20.78, 20.78, 0.0, 0.0, 0.0, 0.0]
+base_shear_params = [0.261343256161012, 1.0, 20.78, 20.78, 0.0, 0.0, 0.0, 0.0]
+macro_model = 'sie'
 m = np.linspace(0.01, 0.5, 100)
 n = np.linspace(0, 360, 100)
 o = np.linspace(-0.5, 0.5, 100)
@@ -245,9 +248,6 @@ def run_glafic_calculation(params, model_name, worker_temp_dir):
     m_val, n_val, o_val = params
     output_path = os.path.join(worker_temp_dir, model_name)
     
-    base_lens_params = [0.261343256161012, 1.30e+02, 20.78, 20.78, 0.0, 0.0, 0.0, 0.0]
-    base_shear_params = [0.261343256161012, 1.0, 20.78, 20.78, 0.0, 0.0, 0.0, 0.0]
-    
     current_lens_params = list(base_lens_params)
     current_shear_params = list(base_shear_params)
     current_shear_params[n_param - 1] = n_val
@@ -262,7 +262,7 @@ def run_glafic_calculation(params, model_name, worker_temp_dir):
     glafic.set_secondary('hvary          0', verb=0)
     glafic.set_secondary('ran_seed -122000', verb=0)
     glafic.startup_setnum(2, 0, 1)
-    glafic.set_lens(1, 'sie', *current_lens_params)
+    glafic.set_lens(1, macro_model, *current_lens_params)
     glafic.set_lens(2, 'pert', *current_shear_params)
     glafic.set_point(1, 1.0, 20.78, 20.78)
     glafic.setopt_lens(1, 0, 1, 1, 1, 1, 1, 0, 0)
@@ -279,6 +279,36 @@ def run_glafic_calculation(params, model_name, worker_temp_dir):
         glafic.writecrit(1.0)
         
     glafic.quit()
+
+def run_base_macro(params, model_name, worker_temp_dir):
+
+    lens_params, source_params = params
+    current_lens_params = list(lens_params)
+    current_source_params = list(source_params)
+    output_path = os.path.join(worker_temp_dir, model_name)
+    glafic.init(0.3, 0.7, -1.0, 0.7, output_path, 20.0, 20.0, 21.56, 21.56, 0.01, 0.01, 1, verb=0)
+    glafic.set_secondary('chi2_splane 1', verb=0)
+    glafic.set_secondary('chi2_checknimg 0', verb=0)
+    glafic.set_secondary('chi2_restart   -1', verb=0)
+    glafic.set_secondary('chi2_usemag    1', verb=0)
+    glafic.set_secondary('hvary          0', verb=0)
+    glafic.set_secondary('ran_seed -122000', verb=0)
+    glafic.startup_setnum(1, 0, 1)
+    glafic.set_lens(1, macro_model, *current_lens_params)
+    glafic.set_point(1, 1.0, *current_source_params)
+    glafic.setopt_lens(1, 0, 0, 0, 0, 0, 0, 0, 0)
+    glafic.setopt_point(1, 0, 0, 0)
+    glafic.model_init(verb=0)
+    glafic.readobs_point(constraint_file)
+    if prior_file and os.path.exists(prior_file):
+        glafic.parprior(prior_file)
+    glafic.optimize()
+    glafic.findimg()
+    
+    if critical_curve:
+        glafic.writecrit(1.0)
+        
+    glafic.quit() # Placeholder for any base macro functionality if needed
 
 
 def run_single_model(params, worker_temp_dir, obs_point_df):
@@ -329,6 +359,8 @@ def run_single_model(params, worker_temp_dir, obs_point_df):
                 if i < len(param_names) and param_names[i] != 'NaN':
                     col_name = f"{model_type}_{param_names[i]}"
                     result_dict[col_name] = param_val
+        
+        
 
         return result_dict
     
