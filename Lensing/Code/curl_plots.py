@@ -8,6 +8,7 @@ import sys
 import shutil
 import uuid
 from itertools import product, islice
+from astropy.io import fits
 
 # IMPORTANT: Ensure the 'glafic' library is in your Python path
 import glafic
@@ -360,6 +361,12 @@ def run_single_model(params, worker_temp_dir, obs_point_df):
                     col_name = f"{model_type}_{param_names[i]}"
                     result_dict[col_name] = param_val
         
+        hdu_list = fits.open(os.path.join(worker_temp_dir, f'{model_name}_lens.fits'))
+        alphax_macro = hdu_list[0].data[0]
+        alphax_macro = np.array(alphax_macro)
+        alphay_macro = hdu_list[0].data[1]
+        alphay_macro = np.array(alphay_macro)
+
         source_x = result_dict['source_x'] 
         source_y = result_dict['source_y']
 
