@@ -362,15 +362,28 @@ def run_single_model(params, worker_temp_dir, obs_point_df):
                     result_dict[col_name] = param_val
         
         hdu_list = fits.open(os.path.join(worker_temp_dir, f'{model_name}_lens.fits'))
-        alphax_macro = hdu_list[0].data[0]
-        alphax_macro = np.array(alphax_macro)
-        alphay_macro = hdu_list[0].data[1]
-        alphay_macro = np.array(alphay_macro)
+        alphax_tot = hdu_list[0].data[0]
+        alphax_tot = np.array(alphax_tot)
+        alphay_tot = hdu_list[0].data[1]
+        alphay_tot = np.array(alphay_tot)
 
         source_x = result_dict['source_x'] 
         source_y = result_dict['source_y']
 
         run_base_macro((lens_params[model_name], [source_x, source_y]), model_name + '_base', worker_temp_dir)
+
+        pos_rms, image_rms, mag_rms, flux_rms, percentage_errors, avg_percentage_error, chi2, source, lens_params, hubble_val, td_vals, td_rms, percentage_errors_td, avg_percentage_error_td, out_point = rms_extract(model_name + '_base', worker_temp_dir, obs_point_df)
+        out_point_file = os.path.join(worker_temp_dir, f'{model_name}_base_point.dat')
+        num_images = sum(1 for line in open(out_point_file) if line.strip()) - 1 if os.path.exists(out_point_file) else 0
+        
+        result_dict_base = {'m': m_val, 'n': n_val, 'o': o_val, 'num_images': num_images, 'pos_rms': pos_rms, 'mag_rms': mag_rms, 'avg_mag_per': avg_percentage_error, 'chi2': chi2, 'source_x': source[0][1] if source else 0, 'source_y': source[0][2] if source else 0}
+
+        hdu_list_base = fits.open(os.path.join(worker_temp_dir, f'{model_name}_base_lens.fits'))
+        alphax_base = hdu_list_base[0].data[0]
+        alphax_base = np.array(alphax_base)
+        alphay_base = hdu_list_base[0].data[1]
+        alphay_base = np.array(alphay_base)
+
 
         
 
