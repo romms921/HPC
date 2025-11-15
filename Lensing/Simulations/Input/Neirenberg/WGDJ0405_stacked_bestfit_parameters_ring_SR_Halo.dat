@@ -1,0 +1,22 @@
+# Best-fit model results for imfit 1.9.0 (OpenMP-enabled)
+# Generated on Thu Nov 13 15:42:31 2025 by the following command:
+#    ../imfit WGDJ0405_cropped_SR.fits -c config_sersic_WGDJ0405.dat --mask WGDJ0405_cropped_SR_mask_Halo.fits --psf WGDJ0405_stacked_psf.fits --noise WGDJ0405_noise_map_cropped.fits --exptime=396.924988 --save-residual WGDJ0405_cropped_SR_Halo_residual_stacked_ring.fits --save-model WGDJ0405_cropped_SR_Halo_stacked_model_ring.fits --save-params WGDJ0405_stacked_bestfit_parameters_ring_SR_Halo.dat
+
+# Results of fit:
+#   Algorithm: Levenberg-Marquardt: status = 1 -- SUCCESS: Convergence in fit-statistic value.
+#   Fit statistic: chi-squared (user-supplied errors)
+#   Best-fit value: 1311.646271
+#   Reduced value: 0.069602
+#   AIC: 1327.653912
+#   BIC: 1390.401689
+
+X0		83.2914 # +/- 0.0111
+Y0		60.5376 # +/- 0.0112
+FUNCTION Sersic
+PA		9.53645 # +/- 2.9173	deg (CCW from +y axis)
+ell		0.0815089 # +/- 0.0078111
+n		2.22456 # +/- 0.029015
+I_e		1.55044 # +/- 0.029297	counts/pixel
+r_e		  7.145 # +/- 0.07626	pixels
+FUNCTION FlatSky
+I_sky		0.535008 # +/- 0.00064198	counts/pixel
