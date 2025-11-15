@@ -11,7 +11,7 @@ glafic.set_secondary('ran_seed -122000', verb = 0)
 
 glafic.startup_setnum(2, 0, 1)
 glafic.set_lens(1, 'anfw', 0.2900, 4.267108e+11,  1.514701e-02, -1.384099e-02, 1.791487e-01, -4.546593e+01,  4.500459e+01,  0.000000e+00)
-glafic.set_lens(2, 'sers', 0.2900, 1e10, 0.0, 0.0, 0.0815089, 9.53645, 7.145, 2.22456)
+glafic.set_lens(2, 'sers', 0.2900, 1e10, 0.0, 0.0, 0.0815089, 9.53645, 0.6702, 2.22456)
 glafic.set_point(1, 1.7130, 5.045666e-02, -2.404707e-02)
 
 glafic.setopt_lens(1, 0, 0, 1, 1, 1, 1, 1, 0)
