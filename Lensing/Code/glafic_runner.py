@@ -21,7 +21,7 @@ SCRATCH_DIR = os.getenv('SCRATCH_DIR', '/tmp')
 # --- Simulation Parameters ---
 sim_name = 'Sim 9'
 model = 'POW'
-m = np.linspace(0.01, 0.2, 100)
+m = np.linspace(0.01, 0.1, 100)
 n = np.linspace(0, 360, 100)
 o = np.linspace(-0.5, 0.5, 100)
 
