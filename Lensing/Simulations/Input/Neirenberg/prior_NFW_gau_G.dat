@@ -1,2 +1,2 @@
-gauss lens 2 3 0.001
-gauss lens 2 4 0.001
+gauss lens 2 3 0.0 0.001
+gauss lens 2 4 0.0 0.001

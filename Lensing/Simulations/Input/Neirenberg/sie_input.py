@@ -14,14 +14,14 @@ glafic.set_lens(1, 'anfw', 0.2900, 4.267108e+11,  1.514701e-02, -1.384099e-02, 1
 glafic.set_lens(2, 'sers', 0.2900, 1e10, 0.0, 0.0, 0.0815089, 9.53645, 0.6702, 2.22456)
 glafic.set_point(1, 1.7130, 5.045666e-02, -2.404707e-02)
 
-glafic.setopt_lens(1, 0, 0, 1, 1, 1, 1, 1, 0)
-glafic.setopt_lens(2, 0, 1, 0, 0, 0, 0, 0, 0)
+glafic.setopt_lens(1, 0, 1, 1, 1, 1, 1, 1, 0)
+glafic.setopt_lens(2, 0, 1, 1, 1, 0, 0, 0, 0)
 glafic.setopt_point(1, 0, 1, 1)
 
 glafic.model_init(verb = 0)
 
 glafic.readobs_point('/home/rommulus/Projects/itng_lensing/Simulations/Input/Neirenberg/Eobs_point.dat')
-glafic.parprior('/home/rommulus/Projects/itng_lensing/Simulations/Input/Neirenberg/prior_NFW_gau_G.dat')
+# glafic.parprior('/home/rommulus/Projects/itng_lensing/Simulations/Input/Neirenberg/prior_NFW_gau_G.dat')
 glafic.optimize()
 glafic.findimg()
 glafic.writecrit(1.7130)
