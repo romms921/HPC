@@ -19,7 +19,7 @@ obs_point_file = os.path.join(base_results_path, 'pos+flux_point.dat')
 SCRATCH_DIR = os.getenv('SCRATCH_DIR', '/tmp')
 
 # --- Simulation Parameters ---
-sim_name = 'Sim 9'
+sim_name = 'Sim 10'
 model = 'POW'
 m = np.linspace(0.01, 0.2, 100)
 n = np.linspace(0, 360, 100)
@@ -29,7 +29,7 @@ m_lens, m_param = 2, 5
 n_lens, n_param = 2, 6
 o_lens, o_param = 2, 8
 
-constraint_file = os.path.join(base_results_path, 'pos_point.dat')
+constraint_file = os.path.join(base_results_path, 'pos+flux_point.dat')
 prior_file = '/home/rommulus/Projects/itng_lensing/Simulations/Input/System_1/prior.dat'
 time_delay = False
 h0 = False
