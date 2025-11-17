@@ -30,7 +30,7 @@ n_lens, n_param = 2, 6
 o_lens, o_param = 2, 8
 
 constraint_file = os.path.join(base_results_path, 'pos+flux_point.dat')
-prior_file = None
+prior_file = '/home/rommulus/Projects/itng_lensing/Simulations/Input/System_1/prior.dat'
 time_delay = False
 h0 = False
 critical_curve = False
