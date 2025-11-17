@@ -254,7 +254,7 @@ def run_glafic_calculation(params, model_name, worker_temp_dir):
     current_shear_params[o_param - 1] = o_val
     current_shear_params[m_param - 1] = m_val
 
-    glafic.init(0.3089901684739047, 0.6910098315260953, -1.0, 0.6736, output_path, 20.0, 20.0, 21.56, 21.56, 0.01, 0.01, 1, verb=0)
+    glafic.init(0.3, 0.7, -1.0, 0.7, output_path, 20.0, 20.0, 21.56, 21.56, 0.01, 0.01, 1, verb=0)
     glafic.set_secondary('chi2_splane 1', verb=0)
     glafic.set_secondary('chi2_checknimg 0', verb=0)
     glafic.set_secondary('chi2_restart   -1', verb=0)
