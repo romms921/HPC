@@ -19,7 +19,7 @@ obs_point_file = os.path.join(base_results_path, 'pos+flux_point.dat')
 SCRATCH_DIR = os.getenv('SCRATCH_DIR', '/tmp')
 
 # --- Simulation Parameters ---
-sim_name = 'Sim 21'
+sim_name = 'Sim 17'
 model = 'NFW'
 m = np.linspace(0.001, 0.1, 100)
 n = np.linspace(0, 360, 100)
@@ -245,7 +245,7 @@ def run_glafic_calculation(params, model_name, worker_temp_dir):
     m_val, n_val, o_val = params
     output_path = os.path.join(worker_temp_dir, model_name)
     
-    base_lens_params = [0.261343256161012, 1.0, 20.78, 20.78, 0.1, 23.0, 0.4, 2.0]
+    base_lens_params = [0.261343256161012, 1e11, 20.78, 20.78, 0.2, 23.0, 90, 0.0]
     base_shear_params = [0.261343256161012, 1.0, 20.78, 20.78, 0.0, 0.0, 0.0, 0.0]
     
     current_lens_params = list(base_lens_params)
@@ -266,7 +266,7 @@ def run_glafic_calculation(params, model_name, worker_temp_dir):
     glafic.set_lens(2, 'pert', *current_shear_params)
     glafic.set_point(1, 1.0, 20.78, 20.78)
     glafic.setopt_lens(1, 0, 1, 1, 1, 1, 1, 1, 0)
-    glafic.setopt_lens(2, 0, 0, 0, 0, 1, 1, 0, 1)
+    glafic.setopt_lens(2, 0, 0, 0, 0, 0, 0, 0, 0)
     glafic.setopt_point(1, 0, 1, 1)
     glafic.model_init(verb=0)
     glafic.readobs_point(constraint_file)
