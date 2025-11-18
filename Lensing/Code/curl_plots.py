@@ -296,7 +296,7 @@ def run_base_macro(params, model_name, worker_temp_dir):
     glafic.set_secondary('hvary          0', verb=0)
     glafic.set_secondary('ran_seed -122000', verb=0)
     glafic.startup_setnum(1, 0, 1)
-    glafic.set_lens(1, macro_model, *current_lens_params)
+    glafic.set_lens(1, 'pert', *current_lens_params)
     glafic.set_point(1, 1.0, *current_source_params)
     glafic.setopt_lens(1, 0, 0, 0, 0, 0, 0, 0, 0)
     glafic.setopt_point(1, 0, 0, 0)
@@ -384,10 +384,10 @@ def run_single_model(params, worker_temp_dir, obs_point_df):
         source_x = result_dict['source_x'] 
         source_y = result_dict['source_y']
 
-        run_base_macro((lens_params[model_name], [source_x, source_y]), model_name + '_base', worker_temp_dir)
+        run_base_macro((lens_params['pert'], [source_x, source_y]), 'pert_base', worker_temp_dir)
 
         pos_rms, image_rms, mag_rms, flux_rms, percentage_errors, avg_percentage_error, chi2, source, lens_params, hubble_val, td_vals, td_rms, percentage_errors_td, avg_percentage_error_td, out_point = rms_extract(model_name + '_base', worker_temp_dir, obs_point_df)
-        out_point_file = os.path.join(worker_temp_dir, f'{model_name}_base_point.dat')
+        out_point_file = os.path.join(worker_temp_dir, 'pert_base_point.dat')
         num_images = sum(1 for line in open(out_point_file) if line.strip()) - 1 if os.path.exists(out_point_file) else 0
         
         result_dict_base = {'m': m_val, 'n': n_val, 'o': o_val, 'num_images': num_images, 'pos_rms': pos_rms, 'mag_rms': mag_rms, 'avg_mag_per': avg_percentage_error, 'chi2': chi2, 'source_x': source[0][1] if source else 0, 'source_y': source[0][2] if source else 0}
