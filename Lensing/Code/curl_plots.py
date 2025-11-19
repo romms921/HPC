@@ -26,9 +26,9 @@ model = 'SIE'
 base_lens_params = [0.261343256161012, 1.30e+02, 20.78, 20.78, 0.0, 0.0, 0.0, 0.0]
 base_shear_params = [0.261343256161012, 1.0, 20.78, 20.78, 0.0, 0.0, 0.0, 0.0]
 macro_model = 'sie'
-m = np.linspace(0.01, 0.5, 100)
-n = np.linspace(0, 360, 100)
-o = np.linspace(-0.5, 0.5, 100)
+m = np.linspace(0.01, 0.5, 10)
+n = np.linspace(0, 360, 10)
+o = np.linspace(-0.5, 0.5, 10)
 
 m_lens, m_param = 2, 5
 n_lens, n_param = 2, 6
@@ -296,7 +296,7 @@ def run_base_macro(params, model_name, worker_temp_dir):
     glafic.set_secondary('hvary          0', verb=0)
     glafic.set_secondary('ran_seed -122000', verb=0)
     glafic.startup_setnum(1, 0, 1)
-    glafic.set_lens(1, 'pert', *current_lens_params)
+    glafic.set_lens(1, model_name, *current_lens_params)
     glafic.set_point(1, 1.0, *current_source_params)
     glafic.setopt_lens(1, 0, 0, 0, 0, 0, 0, 0, 0)
     glafic.setopt_point(1, 0, 0, 0)
@@ -310,6 +310,29 @@ def run_base_macro(params, model_name, worker_temp_dir):
     if critical_curve:
         glafic.writecrit(1.0)
         
+    glafic.quit() # Placeholder for any base macro functionality if needed
+
+def run_shear(params, model_name, worker_temp_dir):
+
+    lens_params, source_params = params
+    current_lens_params = list(lens_params)
+    current_source_params = list(source_params)
+    output_path = os.path.join(worker_temp_dir, model_name)
+    glafic.init(0.3, 0.7, -1.0, 0.7, output_path, 20.0, 20.0, 21.56, 21.56, 0.01, 0.01, 1, verb=0)
+    glafic.set_secondary('chi2_splane 1', verb=0)
+    glafic.set_secondary('chi2_checknimg 0', verb=0)
+    glafic.set_secondary('chi2_restart   -1', verb=0)
+    glafic.set_secondary('chi2_usemag    1', verb=0)
+    glafic.set_secondary('hvary          0', verb=0)
+    glafic.set_secondary('ran_seed -122000', verb=0)
+    glafic.startup_setnum(1, 0, 1)
+    glafic.set_lens(1, 'pert', *current_lens_params)
+    glafic.set_point(1, 1.0, *current_source_params)
+    glafic.setopt_lens(1, 0, 0, 0, 0, 0, 0, 0, 0)
+    glafic.setopt_point(1, 0, 0, 0)
+    glafic.model_init(verb=0)
+    glafic.readobs_point(constraint_file)
+    glafic.writelens(1.0)
     glafic.quit() # Placeholder for any base macro functionality if needed
 
 
@@ -362,6 +385,11 @@ def run_single_model(params, worker_temp_dir, obs_point_df):
                     col_name = f"{model_type}_{param_names[i]}"
                     result_dict[col_name] = param_val
         
+        if critical_curve:
+            crit_file = os.path.join(worker_temp_dir, f'{model_name}_crit.dat')
+            if os.path.exists(crit_file):
+                crit_data = pd.read_csv(crit_file, sep='\s+', header=None, names=['xi_1', 'yi_1', 'xs_1', 'ys_1', 'xi_2', 'yi_2', 'xs_2', 'ys_2'])
+        
         hdu_list = fits.open(os.path.join(worker_temp_dir, f'{model_name}_lens.fits'))
         alphax_tot = hdu_list[0].data[0]
         alphay_tot = hdu_list[0].data[1]
@@ -384,13 +412,18 @@ def run_single_model(params, worker_temp_dir, obs_point_df):
         source_x = result_dict['source_x'] 
         source_y = result_dict['source_y']
 
-        run_base_macro((lens_params['pert'], [source_x, source_y]), 'pert_base', worker_temp_dir)
+        run_base_macro((lens_params[model_name], [source_x, source_y]), f'{model_name}_base', worker_temp_dir)
 
-        pos_rms, image_rms, mag_rms, flux_rms, percentage_errors, avg_percentage_error, chi2, source, lens_params, hubble_val, td_vals, td_rms, percentage_errors_td, avg_percentage_error_td, out_point = rms_extract(model_name + '_base', worker_temp_dir, obs_point_df)
-        out_point_file = os.path.join(worker_temp_dir, 'pert_base_point.dat')
+        pos_rms, image_rms, mag_rms, flux_rms, percentage_errors, avg_percentage_error, chi2, source, lens_params, hubble_val, td_vals, td_rms, percentage_errors_td, avg_percentage_error_td, out_point_macro = rms_extract(model_name + '_base', worker_temp_dir, obs_point_df)
+        out_point_file = os.path.join(worker_temp_dir, f'{model_name}_base_point.dat')
         num_images = sum(1 for line in open(out_point_file) if line.strip()) - 1 if os.path.exists(out_point_file) else 0
         
         result_dict_base = {'m': m_val, 'n': n_val, 'o': o_val, 'num_images': num_images, 'pos_rms': pos_rms, 'mag_rms': mag_rms, 'avg_mag_per': avg_percentage_error, 'chi2': chi2, 'source_x': source[0][1] if source else 0, 'source_y': source[0][2] if source else 0}
+
+        if critical_curve:
+            crit_file = os.path.join(worker_temp_dir, f'{model_name}_base_crit.dat')
+            if os.path.exists(crit_file):
+                crit_macro = pd.read_csv(crit_file, sep='\s+', header=None, names=['xi_1', 'yi_1', 'xs_1', 'ys_1', 'xi_2', 'yi_2', 'xs_2', 'ys_2'])
 
         hdu_list_base = fits.open(os.path.join(worker_temp_dir, f'{model_name}_base_lens.fits'))
         alphax_base = hdu_list_base[0].data[0]
@@ -403,34 +436,74 @@ def run_single_model(params, worker_temp_dir, obs_point_df):
         Vs_macro = V_base[::step, ::step]
         alphas_macro = alpha_base[::step, ::step]
 
-        fig, ax = plt.subplots(figsize=(10, 8))
-
-        plt.subplots_adjust(top=0.9)
-        im = ax.quiver(Xs, Ys, Us, Vs, alphas, cmap='autumn', scale=20, width=0.005)
-        ax.scatter(obs_point['x'], obs_point['y'], color='red', s=50, label='Observed Images')
-        fig.colorbar(im, ax=ax, label='Deflection Angle')
-        ax.set_xlabel('X Position (pixels)'); ax.set_ylabel('Y Position (pixels)')
-        ax.set_title('Deflection Angle Field')
-        ax.set_aspect('equal', adjustable='datalim')
-        plt.tight_layout()
-        plt.show()
-
-        fig, ax = plt.subplots(figsize=(10, 8))
-        im = ax.quiver(Xs, Ys, Us_macro, Vs_macro, alphas_macro, cmap='autumn', scale=20, width=0.005)
-        fig.colorbar(im, ax=ax, label='Deflection Angle')
-        ax.set_xlabel('X Position (pixels)'); ax.set_ylabel('Y Position (pixels)')
-        ax.set_title('Macro Model Deflection Angle Field')
-        ax.set_aspect('equal', adjustable='datalim')
-        plt.tight_layout()
-        plt.show()
-
+        run_shear((lens_params['pert'], [source_x, source_y]), f'{model_name}_shear', worker_temp_dir)
         
-        
+        hdu_list_shear = fits.open(os.path.join(worker_temp_dir, f'{model_name}_shear_lens.fits'))
+        alphax_shear = hdu_list_shear[0].data[0]
+        alphay_shear = hdu_list_shear[0].data[1]
+
+        alpha_shear = np.sqrt(alphax_shear**2 + alphay_shear**2)
+        U_shear = alphax_shear
+        V_shear = alphay_shear
+        Us_shear = U_shear[::step, ::step]
+        Vs_shear = V_shear[::step, ::step]
+        alphas_shear = alpha_shear[::step, ::step]
 
 
+        fig, axes = plt.subplots(1, 4, figsize=(16, 7), sharex=True, sharey=True)
+        ax1, ax2, ax3, ax4 = axes
 
+        ax1.scatter(obs_point['x'], obs_point['y'], color='blue', s=50, label='Observed Images', marker='x')
+        ax1.scatter(out_point['x'], out_point['y'], color='red', s=50, label='Predicted Images', marker='o')
+        ax1.scatter(source_x, source_y, color='green', s=100, label='Source Position', marker='*')
+        ax1.scatter(crit_data['xi_1'], crit_data['yi_1'], color='purple', s=1, label='Critical Curve', alpha=0.5)
+        ax1.scatter(crit_data['xs_1'], crit_data['ys_1'], color='black', s=1, label='Caustics', alpha=0.5)
+        ax1.set_title('Macro Model + Shear')
+        ax1.set_xlabel('X Position (pixels)')
+        ax1.set_ylabel('Y Position (pixels)')
+        ax1.set_aspect('equal', adjustable='datalim')
+        ax1.legend(loc='upper right')
 
+        ax2.scatter(obs_point['x'], obs_point['y'], color='blue', s=50, label='Observed Images', marker='x')
+        ax2.scatter(out_point_macro['x'], out_point_macro['y'], color='red', s=50, label='Predicted Images', marker='o')
+        ax2.scatter(source_x, source_y, color='green', s=100, label='Source Position', marker='*')
+        ax2.scatter(crit_macro['xi_1'], crit_macro['yi_1'], color='purple', s=1, label='Critical Curve', alpha=0.5)
+        ax2.scatter(crit_macro['xs_1'], crit_macro['ys_1'], color='black', s=1, label='Caustics', alpha=0.5)
+        ax2.set_title('Base Macro Model')
+        ax2.set_xlabel('X Position (pixels)')
+        ax2.set_ylabel('Y Position (pixels)')
+        ax2.set_aspect('equal', adjustable='datalim')
+        ax2.legend(loc='upper right')
 
+        ax3.scatter(out_point['x'], out_point['y'], color='red', s=50, label='SIE + SHEAR Images', marker='o')
+        ax3.scatter(out_point_macro['x'], out_point_macro['y'], color='red', s=50, label='SIE Images', marker='o')
+        for i in range(len(out_point_macro)):
+            ax3.arrow(out_point_macro.at[i, 'x'], out_point_macro.at[i, 'y'], out_point.at[i, 'x'] - out_point_macro.at[i, 'x'], out_point.at[i, 'y'] - out_point_macro.at[i, 'y'], head_width=0.5, head_length=0.5, fc='orange', ec='orange', length_includes_head=True)
+        ax3.scatter(source_x, source_y, color='green', s=100, label='Source Position', marker='*')
+        ax3.quiver(Xs, Ys, Us_shear, Vs_shear, alphas_shear, cmap='autumn', scale=20, width=0.005)
+        ax3.set_title('Shear Deflection Angle Field')
+        ax3.set_xlabel('X Position (pixels)')
+        ax3.set_ylabel('Y Position (pixels)')
+        ax3.set_aspect('equal', adjustable='datalim')
+        ax3.legend(loc='upper right')
+
+        alpha_difference = alpha_base - alpha_shear
+        U_diff = alphax_base - alphax_shear
+        V_diff = alphay_base - alphay_shear
+        Us_diff = U_diff[::step, ::step]
+        Vs_diff = V_diff[::step, ::step]
+        alphas_diff = alpha_difference[::step, ::step]
+
+        im4 = ax4.quiver(Xs, Ys, Us_diff, Vs_diff, alphas_diff, cmap='autumn', scale=20, width=0.005)
+        ax4.set_title('Shear Only Deflection Angle Field')
+        ax4.set_xlabel('X Position (pixels)')
+        ax4.set_ylabel('Y Position (pixels)')
+        ax4.set_aspect('equal', adjustable='datalim')
+        ax4.legend(loc='upper right')
+        plt.suptitle(f'Lensing Model: {model_name}\n(m={m_val}, n={n_val}, o={o_val})', fontsize=16)
+        plot_file = os.path.join(final_results_dir, f'{model_name}_deflection.png')
+        plt.savefig(plot_file)
+        plt.close(fig)
 
         return result_dict
     
@@ -440,11 +513,16 @@ def run_single_model(params, worker_temp_dir, obs_point_df):
         sys.stdout.flush()
         return None
     finally:
-        for suffix in ['_optresult.dat', '_point.dat', '_crit.dat']:
-             f = os.path.join(worker_temp_dir, f"{model_name}{suffix}")
-             if os.path.exists(f):
-                 try: os.remove(f)
-                 except OSError: pass
+        for suffix in ['_optresult.dat', '_point.dat', '_crit.dat', '_lens.fits']:
+            f = os.path.join(worker_temp_dir, f"{model_name}{suffix}")
+            f_base = os.path.join(worker_temp_dir, f"{model_name}_base{suffix}")
+            f_shear = os.path.join(worker_temp_dir, f"{model_name}_shear{suffix}")
+            for filepath in (f, f_base, f_shear):
+                try:
+                    if os.path.exists(filepath):
+                        os.remove(filepath)
+                except OSError:
+                    pass
 
 def write_batch_to_csv(batch, csv_file):
     if not batch: return
