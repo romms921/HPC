@@ -26,9 +26,9 @@ model = 'SIE'
 base_lens_params = [0.261343256161012, 1.30e+02, 20.78, 20.78, 0.0, 0.0, 0.0, 0.0]
 base_shear_params = [0.261343256161012, 1.0, 20.78, 20.78, 0.0, 0.0, 0.0, 0.0]
 macro_model = 'sie'
-m = np.linspace(0.01, 0.5, 10)
+m = np.linspace(0.01, 0.1, 10)
 n = np.linspace(0, 360, 1)
-o = np.linspace(-0.5, 0.5, 1)
+o = np.linspace(0.1, 0.5, 1)
 
 m_lens, m_param = 2, 5
 n_lens, n_param = 2, 6
@@ -453,39 +453,44 @@ def run_single_model(params, worker_temp_dir, obs_point_df):
         Vs_shear = V_shear[::step, ::step]
         alphas_shear = alpha_shear[::step, ::step]
 
-        crit_data.sort_values(by=['xi_1', 'yi_1'], inplace=True)
-        crit_macro.sort_values(by=['xi_1', 'yi_1'], inplace=True)
+        plt.rcParams.update({'figure.dpi': 300})
+        fig, axes = plt.subplots(2, 2, figsize=(12, 12))
+        ax1, ax2, ax3, ax4 = axes.flatten()
 
-        fig, axes = plt.subplots(1, 4, figsize=(22, 8))
-        ax1, ax2, ax3, ax4 = axes
-
-        ax1.scatter(obs_point['x'], obs_point['y'], color='blue', s=50, label='Observed Images', marker='x')
-        ax1.scatter(out_point['x'], out_point['y'], color='red', s=50, label='Predicted Images', marker='o')
-        ax1.scatter(source_x, source_y, color='green', s=100, label='Source Position', marker='*')
-        ax1.plot(crit_data['xi_1'], crit_data['yi_1'], color='purple', label='Critical Curve', alpha=0.5)
-        ax1.scatter(crit_data['xs_1'], crit_data['ys_1'], color='black', s=1, label='Caustics', alpha=0.5)
+        ax1.scatter(out_point['x'], out_point['y'], color='orange', s=80, label='Predicted Images', marker='o')
+        ax1.scatter(obs_point['x'], obs_point['y'], color='green', s=100, label='Observed Images', marker='x')
+        ax1.scatter(source_x, source_y, color='green', s=150, label='Source Position', marker='*')
+        if critical_curve and 'crit_data' in locals():
+            ax1.scatter(crit_data['xi_1'], crit_data['yi_1'], s = 5, color='purple', label='Critical Curve', alpha=1)
+            ax1.scatter(crit_data['xs_1'], crit_data['ys_1'], color='black', s=2, label='Caustics', alpha=1)
         ax1.set_title('Macro Model + Shear')
         ax1.set_xlabel('X Position (pixels)')
         ax1.set_ylabel('Y Position (pixels)')
+        ax1.set_aspect('equal', adjustable='box')
+        ax1.legend()
 
-        ax2.scatter(obs_point['x'], obs_point['y'], color='blue', s=50, label='Observed Images', marker='x')
-        ax2.scatter(out_point_macro['x'], out_point_macro['y'], color='red', s=50, label='Predicted Images', marker='o')
+        ax2.scatter(out_point_macro['x'], out_point_macro['y'], color='red', s=80, label='Predicted Images', marker='o')
+        ax2.scatter(obs_point['x'], obs_point['y'], color='blue', s=80, label='Observed Images', marker='x')
         ax2.scatter(source_x, source_y, color='green', s=100, label='Source Position', marker='*')
-        ax2.plot(crit_macro['xi_1'], crit_macro['yi_1'], color='purple', label='Critical Curve', alpha=0.5)
-        ax2.scatter(crit_macro['xs_1'], crit_macro['ys_1'], color='black', s=1, label='Caustics', alpha=0.5)
+        if critical_curve and 'crit_macro' in locals():
+            ax2.scatter(crit_macro['xi_1'], crit_macro['yi_1'], s = 50, color='purple', label='Critical Curve', alpha=0.5)
+            ax2.scatter(crit_macro['xs_1'], crit_macro['ys_1'], color='black', s=1, label='Caustics', alpha=0.5)
         ax2.set_title('Base Macro Model')
         ax2.set_xlabel('X Position (pixels)')
         ax2.set_ylabel('Y Position (pixels)')
+        ax2.set_aspect('equal', adjustable='box')
+        ax2.legend()
 
-        ax3.scatter(out_point['x'], out_point['y'], color='red', s=50, label='SIE + SHEAR Images', marker='o')
-        ax3.scatter(out_point_macro['x'], out_point_macro['y'], color='red', s=50, label='SIE Images', marker='o')
-        # for i in range(len(out_point_macro)):
-        #     ax3.arrow(out_point_macro.at[i, 'x'], out_point_macro.at[i, 'y'], out_point.at[i, 'x'] - out_point_macro.at[i, 'x'], out_point.at[i, 'y'] - out_point_macro.at[i, 'y'], head_width=0.5, head_length=0.5)
+        ax3.scatter(out_point['x'], out_point['y'], color='red', s=80, label='SIE + SHEAR Images', marker='o')
+        ax3.scatter(out_point_macro['x'], out_point_macro['y'], color='blue', s=80, label='SIE Images', marker='x')
         ax3.scatter(source_x, source_y, color='green', s=100, label='Source Position', marker='*')
-        ax3.quiver(Xs, Ys, Us_shear, Vs_shear, alphas_shear, cmap='autumn', scale=0.1, width=0.005)
+        q3 = ax3.quiver(Xs, Ys, Us_shear, Vs_shear, alphas_shear, cmap='inferno', scale=1, width=0.007)
+        fig.colorbar(q3, ax=ax3, orientation='vertical', label='Deflection Angle Magnitude')
         ax3.set_title('Shear Deflection Angle Field')
         ax3.set_xlabel('X Position (pixels)')
         ax3.set_ylabel('Y Position (pixels)')
+        ax3.set_aspect('equal', adjustable='box')
+        ax3.legend()
 
         alpha_difference = alpha_base - alpha_shear
         U_diff = alphax_base - alphax_shear
@@ -494,11 +499,15 @@ def run_single_model(params, worker_temp_dir, obs_point_df):
         Vs_diff = V_diff[::step, ::step]
         alphas_diff = alpha_difference[::step, ::step]
 
-        im4 = ax4.quiver(Xs, Ys, Us_diff, Vs_diff, alphas_diff, cmap='autumn', scale=0.1, width=0.005)
+        q4 = ax4.quiver(Xs, Ys, Us_diff, Vs_diff, alphas_diff, cmap='inferno', scale=1, width=0.007)
+        fig.colorbar(q4, ax=ax4, orientation='vertical', label='Deflection Angle Magnitude')
         ax4.set_title('Shear Only Deflection Angle Field')
         ax4.set_xlabel('X Position (pixels)')
         ax4.set_ylabel('Y Position (pixels)')
-        plt.suptitle(f'Lensing Model: {model_name}\n(m={m_val}, n={n_val}, o={o_val})', fontsize=16)
+        ax4.set_aspect('equal', adjustable='box')
+
+        plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+        plt.suptitle(f'Lensing Model: {model_name} (m={m_val}, n={n_val}, o={o_val})', fontsize=16)
         plot_file = os.path.join(final_results_dir, f'{model_name}_deflection.png')
         plt.savefig(plot_file)
         plt.close(fig)
