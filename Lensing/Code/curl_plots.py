@@ -485,12 +485,13 @@ def run_single_model(params, worker_temp_dir, obs_point_df):
         ax3.scatter(out_point_macro['x'], out_point_macro['y'], color='blue', s=80, label='SIE Images', marker='x')
         ax3.scatter(source_x, source_y, color='green', s=100, label='Source Position', marker='*')
         q3 = ax3.quiver(Xs, Ys, Us_shear, Vs_shear, alphas_shear, cmap='inferno', scale=1, width=0.007)
-        fig.colorbar(q3, ax=ax3, orientation='vertical', label='Deflection Angle Magnitude')
         ax3.set_title('Shear Deflection Angle Field')
         ax3.set_xlabel('X Position (pixels)')
         ax3.set_ylabel('Y Position (pixels)')
         ax3.set_aspect('equal', adjustable='box')
         ax3.legend()
+        cbar3 = fig.colorbar(q3, ax=ax3, orientation='vertical', label='Deflection Angle Magnitude', shrink=ax3.get_position().height / fig.get_figheight())
+
 
         alpha_difference = alpha_base - alpha_shear
         U_diff = alphax_base - alphax_shear
@@ -500,11 +501,11 @@ def run_single_model(params, worker_temp_dir, obs_point_df):
         alphas_diff = alpha_difference[::step, ::step]
 
         q4 = ax4.quiver(Xs, Ys, Us_diff, Vs_diff, alphas_diff, cmap='inferno', scale=1, width=0.007)
-        fig.colorbar(q4, ax=ax4, orientation='vertical', label='Deflection Angle Magnitude')
         ax4.set_title('Shear Only Deflection Angle Field')
         ax4.set_xlabel('X Position (pixels)')
         ax4.set_ylabel('Y Position (pixels)')
         ax4.set_aspect('equal', adjustable='box')
+        cbar4 = fig.colorbar(q4, ax=ax4, orientation='vertical', label='Deflection Angle Magnitude', shrink=ax4.get_position().height / fig.get_figheight())
 
         plt.tight_layout(rect=[0, 0.03, 1, 0.95])
         plt.suptitle(f'Lensing Model: {model_name} (m={m_val}, n={n_val}, o={o_val})', fontsize=16)
