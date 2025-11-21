@@ -27,7 +27,7 @@ base_lens_params = [0.261343256161012, 1.30e+02, 20.78, 20.78, 0.0, 0.0, 0.0, 0.
 base_shear_params = [0.261343256161012, 1.0, 20.78, 20.78, 0.0, 0.0, 0.0, 0.0]
 macro_model = 'sie'
 m = np.linspace(0.01, 0.1, 10)
-n = np.linspace(0, 360, 1)
+n = np.linspace(0, 360, 10)
 o = np.linspace(0.1, 0.5, 1)
 
 m_lens, m_param = 2, 5
@@ -256,7 +256,7 @@ def run_glafic_calculation(params, model_name, worker_temp_dir):
     current_shear_params[o_param - 1] = o_val
     current_shear_params[m_param - 1] = m_val
 
-    glafic.init(0.3, 0.7, -1.0, 0.7, output_path, 20.0, 20.0, 21.56, 21.56, 0.01, 0.01, 1, verb=0)
+    glafic.init(0.3, 0.7, -1.0, 0.7, output_path, 20.0, 20.0, 21.56, 21.56, 0.001, 0.001, 1, verb=0)
     glafic.set_secondary('chi2_splane 1', verb=0)
     glafic.set_secondary('chi2_checknimg 0', verb=0)
     glafic.set_secondary('chi2_restart   -1', verb=0)
@@ -289,7 +289,7 @@ def run_base_macro(params, model_name, worker_temp_dir):
     current_lens_params = list(lens_params)
     current_source_params = list(source_params)
     output_path = os.path.join(worker_temp_dir, model_name)
-    glafic.init(0.3, 0.7, -1.0, 0.7, output_path, 20.0, 20.0, 21.56, 21.56, 0.01, 0.01, 1, verb=0)
+    glafic.init(0.3, 0.7, -1.0, 0.7, output_path, 20.0, 20.0, 21.56, 21.56, 0.001, 0.001, 1, verb=0)
     glafic.set_secondary('chi2_splane 1', verb=0)
     glafic.set_secondary('chi2_checknimg 0', verb=0)
     glafic.set_secondary('chi2_restart   -1', verb=0)
@@ -320,7 +320,7 @@ def run_shear(params, model_name, worker_temp_dir):
     current_lens_params = list(lens_params)
     current_source_params = list(source_params)
     output_path = os.path.join(worker_temp_dir, model_name)
-    glafic.init(0.3, 0.7, -1.0, 0.7, output_path, 20.0, 20.0, 21.56, 21.56, 0.01, 0.01, 1, verb=0)
+    glafic.init(0.3, 0.7, -1.0, 0.7, output_path, 20.0, 20.0, 21.56, 21.56, 0.001, 0.001, 1, verb=0)
     glafic.set_secondary('chi2_splane 1', verb=0)
     glafic.set_secondary('chi2_checknimg 0', verb=0)
     glafic.set_secondary('chi2_restart   -1', verb=0)
@@ -454,60 +454,94 @@ def run_single_model(params, worker_temp_dir, obs_point_df):
         alphas_shear = alpha_shear[::step, ::step]
 
         plt.rcParams.update({'figure.dpi': 300})
-        fig, axes = plt.subplots(2, 2, figsize=(12, 12))
-        ax1, ax2, ax3, ax4 = axes.flatten()
+        fig, axes = plt.subplots(1, 3, figsize=(16, 8))
+        ax1, ax2, ax3 = axes.flatten()
 
+        # Determine common plot limits
+        all_x = pd.concat([
+            out_point['x'], obs_point['x'], 
+            out_point_macro['x'], 
+            pd.Series([source_x])
+        ])
+        all_y = pd.concat([
+            out_point['y'], obs_point['y'], 
+            out_point_macro['y'], 
+            pd.Series([source_y])
+        ])
+
+        if critical_curve and 'crit_data' in locals():
+            all_x = pd.concat([all_x, crit_data['xi_1'], crit_data['xs_1']])
+            all_y = pd.concat([all_y, crit_data['yi_1'], crit_data['ys_1']])
+        if critical_curve and 'crit_macro' in locals():
+            all_x = pd.concat([all_x, crit_macro['xi_1'], crit_macro['xs_1']])
+            all_y = pd.concat([all_y, crit_macro['yi_1'], crit_macro['ys_1']])
+
+        x_min, x_max = all_x.min(), all_x.max()
+        y_min, y_max = all_y.min(), all_y.max()
+        
+        # Add some padding
+        x_pad = (x_max - x_min) * 0.1
+        y_pad = (y_max - y_min) * 0.1
+        
+        xlim = (x_min - x_pad, x_max + x_pad)
+        ylim = (y_min - y_pad, y_max + y_pad)
+
+        # Plot 1: Macro Model + Shear
         ax1.scatter(out_point['x'], out_point['y'], color='orange', s=80, label='Predicted Images', marker='o')
-        ax1.scatter(obs_point['x'], obs_point['y'], color='green', s=100, label='Observed Images', marker='x')
+        ax1.scatter(obs_point['x'], obs_point['y'], color='blue', s=100, label='Observed Images', marker='x')
         ax1.scatter(source_x, source_y, color='green', s=150, label='Source Position', marker='*')
         if critical_curve and 'crit_data' in locals():
-            ax1.scatter(crit_data['xi_1'], crit_data['yi_1'], s = 5, color='purple', label='Critical Curve', alpha=1)
+            ax1.scatter(crit_data['xi_1'], crit_data['yi_1'], s = 5, color='red', label='Critical Curve', alpha=1)
             ax1.scatter(crit_data['xs_1'], crit_data['ys_1'], color='black', s=2, label='Caustics', alpha=1)
         ax1.set_title('Macro Model + Shear')
-        ax1.set_xlabel('X Position (pixels)')
-        ax1.set_ylabel('Y Position (pixels)')
+        ax1.set_xlabel('X Position (arcsec)')
+        ax1.set_ylabel('Y Position (arcsec)')
         ax1.set_aspect('equal', adjustable='box')
-        ax1.legend()
+        ax1.legend(fontsize='small')
+        ax1.set_xlim(xlim)
+        ax1.set_ylim(ylim)
 
-        ax2.scatter(out_point_macro['x'], out_point_macro['y'], color='red', s=80, label='Predicted Images', marker='o')
+        # Plot 2: Base Macro Model
+        ax2.scatter(out_point_macro['x'], out_point_macro['y'], color='orange', s=80, label='Predicted Images', marker='o')
         ax2.scatter(obs_point['x'], obs_point['y'], color='blue', s=80, label='Observed Images', marker='x')
         ax2.scatter(source_x, source_y, color='green', s=100, label='Source Position', marker='*')
         if critical_curve and 'crit_macro' in locals():
-            ax2.scatter(crit_macro['xi_1'], crit_macro['yi_1'], s = 50, color='purple', label='Critical Curve', alpha=0.5)
+            ax2.scatter(crit_macro['xi_1'], crit_macro['yi_1'], s = 50, color='red', label='Critical Curve', alpha=0.5)
             ax2.scatter(crit_macro['xs_1'], crit_macro['ys_1'], color='black', s=1, label='Caustics', alpha=0.5)
         ax2.set_title('Base Macro Model')
-        ax2.set_xlabel('X Position (pixels)')
-        ax2.set_ylabel('Y Position (pixels)')
+        ax2.set_xlabel('X Position (arcsec)')
+        ax2.set_ylabel('Y Position (arcsec)')
         ax2.set_aspect('equal', adjustable='box')
-        ax2.legend()
+        ax2.legend(fontsize='small')
+        ax2.set_xlim(xlim)
+        ax2.set_ylim(ylim)
 
-        ax3.scatter(out_point['x'], out_point['y'], color='red', s=80, label='SIE + SHEAR Images', marker='o')
+        # Plot 3: Shear Deflection Field
+        # Get coordinate conversion info from FITS header
+        header = hdu_list_shear[0].header
+        crpix1, crpix2 = header['CRPIX1'], header['CRPIX2']
+        crval1, crval2 = header['CRVAL1'], header['CRVAL2']
+        cdelt1, cdelt2 = header['CDELT1'], header['CDELT2']
+
+        # Convert pixel coordinates to arcseconds for the quiver plot
+        Xs_arcsec = (Xs - (crpix1 - 1)) * cdelt1 + crval1
+        Ys_arcsec = (Ys - (crpix2 - 1)) * cdelt2 + crval2
+
+        # Plot 3: Shear Deflection Field
+        ax3.scatter(out_point['x'], out_point['y'], color='orange', s=80, label='SIE + SHEAR Images', marker='o')
         ax3.scatter(out_point_macro['x'], out_point_macro['y'], color='blue', s=80, label='SIE Images', marker='x')
         ax3.scatter(source_x, source_y, color='green', s=100, label='Source Position', marker='*')
-        q3 = ax3.quiver(Xs, Ys, Us_shear, Vs_shear, alphas_shear, cmap='inferno', scale=1, width=0.007)
+        # Set scale=None to allow matplotlib to automatically scale the arrows
+        q3 = ax3.quiver(Xs_arcsec, Ys_arcsec, Us_shear, Vs_shear, alphas_shear, cmap='inferno', scale=None, width=0.007)
         ax3.set_title('Shear Deflection Angle Field')
-        ax3.set_xlabel('X Position (pixels)')
-        ax3.set_ylabel('Y Position (pixels)')
+        ax3.set_xlabel('X Position (arcsec)')
+        ax3.set_ylabel('Y Position (arcsec)')
         ax3.set_aspect('equal', adjustable='box')
-        ax3.legend()
-        cbar3 = fig.colorbar(q3, ax=ax3, orientation='vertical', label='Deflection Angle Magnitude', shrink=ax3.get_position().height / fig.get_figheight())
+        ax3.legend(fontsize='small')
+        ax3.set_xlim(xlim)
+        ax3.set_ylim(ylim)
+        # ax3 uses different coordinate system (pixels), so we don't set xlim/ylim for it to match the others
 
-
-        alpha_difference = alpha_base - alpha_shear
-        U_diff = alphax_base - alphax_shear
-        V_diff = alphay_base - alphay_shear
-        Us_diff = U_diff[::step, ::step]
-        Vs_diff = V_diff[::step, ::step]
-        alphas_diff = alpha_difference[::step, ::step]
-
-        q4 = ax4.quiver(Xs, Ys, Us_diff, Vs_diff, alphas_diff, cmap='inferno', scale=1, width=0.007)
-        ax4.set_title('Shear Only Deflection Angle Field')
-        ax4.set_xlabel('X Position (pixels)')
-        ax4.set_ylabel('Y Position (pixels)')
-        ax4.set_aspect('equal', adjustable='box')
-        cbar4 = fig.colorbar(q4, ax=ax4, orientation='vertical', label='Deflection Angle Magnitude', shrink=ax4.get_position().height / fig.get_figheight())
-
-        plt.tight_layout(rect=[0, 0.03, 1, 0.95])
         plt.suptitle(f'Lensing Model: {model_name} (m={m_val}, n={n_val}, o={o_val})', fontsize=16)
         plot_file = os.path.join(final_results_dir, f'{model_name}_deflection.png')
         plt.savefig(plot_file)
