@@ -305,10 +305,8 @@ def run_base_macro(params, model_name, worker_temp_dir):
     glafic.readobs_point(constraint_file)
     if prior_file and os.path.exists(prior_file):
         glafic.parprior(prior_file)
-    glafic.optimize()
     glafic.findimg()
     glafic.writelens(1.0)
-    
     if critical_curve:
         glafic.writecrit(1.0)
         
@@ -419,7 +417,11 @@ def run_single_model(params, worker_temp_dir, obs_point_df):
         run_base_macro((lens_params[macro_model], [source_x, source_y]), f'{model_name}_base', worker_temp_dir)
 
         pos_rms, image_rms, mag_rms, flux_rms, percentage_errors, avg_percentage_error, chi2, source, lens_params_macro, hubble_val, td_vals, td_rms, percentage_errors_td, avg_percentage_error_td, out_point_macro = rms_extract(model_name + '_base', worker_temp_dir, obs_point_df)
-        out_point_file = os.path.join(worker_temp_dir, f'{model_name}_base_point.dat')
+        try:
+            out_point_file = os.path.join(worker_temp_dir, f'{model_name}_base_point.dat')
+        except FileNotFoundError:
+            print(f"Base point file not found for model {model_name}.")
+        
         num_images = sum(1 for line in open(out_point_file) if line.strip()) - 1 if os.path.exists(out_point_file) else 0
         
         result_dict_base = {'m': m_val, 'n': n_val, 'o': o_val, 'num_images': num_images, 'pos_rms': pos_rms, 'mag_rms': mag_rms, 'avg_mag_per': avg_percentage_error, 'chi2': chi2, 'source_x': source[0][1] if source else 0, 'source_y': source[0][2] if source else 0}
