@@ -245,7 +245,7 @@ def run_glafic_calculation(params, model_name, worker_temp_dir):
     m_val, n_val, o_val = params
     output_path = os.path.join(worker_temp_dir, model_name)
     
-    base_lens_params = [0.261343256161012, 140, 0.0, 0.0, 0.2, 23.0, 0.0, 0.0]
+    base_lens_params = [0.261343256161012, 150, 0.0, 0.0, 0.2, 0.0, 0.0, 0.0]
     base_shear_params = [0.261343256161012, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     
     current_lens_params = list(base_lens_params)
@@ -254,7 +254,7 @@ def run_glafic_calculation(params, model_name, worker_temp_dir):
     current_shear_params[o_param - 1] = o_val
     current_shear_params[m_param - 1] = m_val
 
-    glafic.init(0.3089901684739047, 0.6910098315260953, -1.0, 0.6736, output_path, -3.5, -3.5, 3.5, 3.5, 0.01, 0.01, 1, verb=0)
+    glafic.init(0.3089901684739047, 0.6910098315260953, -1.0, 0.6736, output_path, -3.0, -3.0, 3.0, 3.0, 0.01, 0.01, 1, verb=0)
     glafic.set_secondary('chi2_splane 1', verb=0)
     glafic.set_secondary('chi2_checknimg 0', verb=0)
     glafic.set_secondary('chi2_restart   -1', verb=0)

@@ -14,13 +14,13 @@ import glafic
 
 # --- File Paths & Parameters ---
 model_output_base = '/home/rommulus/Projects/itng_lensing/Simulations/Output/Sim_2'
-base_results_path = '/home/rommulus/Projects/itng_lensing/Simulations/Input/System_1'
+base_results_path = '/home/rommulus/Projects/itng_lensing/Simulations/Input/System_2'
 obs_point_file = os.path.join(base_results_path, 'pos+flux_point.dat')
 SCRATCH_DIR = os.getenv('SCRATCH_DIR', '/tmp')
 
 # --- Simulation Parameters ---
-sim_name = 'Sim 22'
-model = 'NFW'
+sim_name = 'Sim 2'
+model = 'SIE'
 m = np.linspace(0.001, 0.1, 100)
 n = np.linspace(0, 360, 100)
 o = np.linspace(-0.5, 0.5, 100)
@@ -245,8 +245,8 @@ def run_glafic_calculation(params, model_name, worker_temp_dir):
     m_val, n_val, o_val = params
     output_path = os.path.join(worker_temp_dir, model_name)
     
-    base_lens_params = [0.261343256161012, 1e11, 20.78, 20.78, 0.2, 23.0, 90, 0.0]
-    base_shear_params = [0.261343256161012, 1.0, 20.78, 20.78, 0.0, 0.0, 0.0, 0.0]
+    base_lens_params = [0.261343256161012, 150, 0.0, 0.0, 0.2, 0.0, 0.0, 0.0]
+    base_shear_params = [0.261343256161012, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     
     current_lens_params = list(base_lens_params)
     current_shear_params = list(base_shear_params)
@@ -254,7 +254,7 @@ def run_glafic_calculation(params, model_name, worker_temp_dir):
     current_shear_params[o_param - 1] = o_val
     current_shear_params[m_param - 1] = m_val
 
-    glafic.init(0.3089901684739047, 0.6910098315260953, -1.0, 0.6736, output_path, 20.0, 20.0, 21.56, 21.56, 0.01, 0.01, 1, verb=0)
+    glafic.init(0.3089901684739047, 0.6910098315260953, -1.0, 0.6736, output_path, -3.0, -3.0, 3.0, 3.0, 0.01, 0.01, 1, verb=0)
     glafic.set_secondary('chi2_splane 1', verb=0)
     glafic.set_secondary('chi2_checknimg 0', verb=0)
     glafic.set_secondary('chi2_restart   -1', verb=0)
@@ -262,11 +262,11 @@ def run_glafic_calculation(params, model_name, worker_temp_dir):
     glafic.set_secondary('hvary          0', verb=0)
     glafic.set_secondary('ran_seed -122000', verb=0)
     glafic.startup_setnum(2, 0, 1)
-    glafic.set_lens(1, 'anfw', *current_lens_params)
+    glafic.set_lens(1, 'sie', *current_lens_params)
     glafic.set_lens(2, 'pert', *current_shear_params)
-    glafic.set_point(1, 1.0, 20.78, 20.78)
-    glafic.setopt_lens(1, 0, 1, 1, 1, 1, 1, 1, 0)
-    glafic.setopt_lens(2, 0, 0, 0, 0, 1, 1, 0, 1)
+    glafic.set_point(1, 1.0, 0.0, 0.0)
+    glafic.setopt_lens(1, 0, 1, 1, 1, 1, 1, 0, 0)
+    glafic.setopt_lens(2, 0, 0, 0, 0, 0, 0, 0, 0)
     glafic.setopt_point(1, 0, 1, 1)
     glafic.model_init(verb=0)
     glafic.readobs_point(constraint_file)
