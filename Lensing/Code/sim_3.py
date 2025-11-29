@@ -14,13 +14,13 @@ import glafic
 
 # --- File Paths & Parameters ---
 model_output_base = '/home/rommulus/Projects/itng_lensing/Simulations/Output/Sim_3'
-base_results_path = '/home/rommulus/Projects/itng_lensing/Simulations/Input/System_2'
+base_results_path = '/home/rommulus/Projects/itng_lensing/Simulations/Input/System_3'
 obs_point_file = os.path.join(base_results_path, 'pos+flux_point.dat')
 SCRATCH_DIR = os.getenv('SCRATCH_DIR', '/tmp')
 
 # --- Simulation Parameters ---
-sim_name = 'Sim 23'
-model = 'NFW'
+sim_name = 'Sim 3'
+model = 'SIE'
 m = np.linspace(0.001, 0.1, 1000)
 n = np.linspace(0, 360, 1000)
 o = np.array([0.0])
