@@ -19,7 +19,7 @@ obs_point_file = os.path.join(base_results_path, 'pos+flux_point.dat')
 SCRATCH_DIR = os.getenv('SCRATCH_DIR', '/tmp')
 
 # --- Simulation Parameters ---
-sim_name = 'Sim 4'
+sim_name = 'Sim 8'
 model = 'SIE'
 m = np.linspace(0.001, 0.1, 1000)
 n = np.linspace(0, 360, 1000)
