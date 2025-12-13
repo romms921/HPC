@@ -30,7 +30,7 @@ n_lens, n_param = 2, 6
 o_lens, o_param = 2, 8
 
 constraint_file = os.path.join(base_results_path, 'pos_point.dat')
-prior_file = None
+prior_file = '/home/rommulus/Projects/itng_lensing/Simulations/Input/System_3/prior.dat'
 time_delay = False
 h0 = False
 critical_curve = False
@@ -245,7 +245,7 @@ def run_glafic_calculation(params, model_name, worker_temp_dir):
     m_val, n_val, o_val = params
     output_path = os.path.join(worker_temp_dir, model_name)
     
-    base_lens_params = [0.297717684517447, 1.0, 1.06, 1.06, 0.1, 55, 0.3, 2.1]
+    base_lens_params = [0.297717684517447, 1.0, 1.06, 1.06, 0.1, 55, 0.5, 2.0]
     base_shear_params = [0.297717684517447, 1.0, 1.06, 1.06, 0.0, 0.0, 0.0, 0.0]
 
     current_lens_params = list(base_lens_params)
@@ -265,8 +265,8 @@ def run_glafic_calculation(params, model_name, worker_temp_dir):
     glafic.set_lens(1, 'pow', *current_lens_params)
     glafic.set_lens(2, 'pert', *current_shear_params)
     glafic.set_point(1, 1.0, 1.06, 1.06)
-    glafic.setopt_lens(1, 0, 1, 1, 1, 1, 1, 0, 0)
-    glafic.setopt_lens(2, 0, 0, 0, 0, 1, 1, 0, 1)
+    glafic.setopt_lens(1, 0, 0, 1, 1, 1, 1, 1, 1)
+    glafic.setopt_lens(2, 0, 0, 0, 0, 0, 0, 0, 0)
     glafic.setopt_point(1, 0, 1, 1)
     glafic.model_init(verb=0)
     glafic.readobs_point(constraint_file)

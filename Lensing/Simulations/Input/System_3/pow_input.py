@@ -2,7 +2,7 @@ import glafic
 
 path = '/Users/ainsleylewis/Documents/Astronomy/HPC/Lensing/Simulations/Input/System_3/test'
 constraint_file = '/Users/ainsleylewis/Documents/Astronomy/HPC/Lensing/Simulations/Input/System_3/pos_point.dat'
-prior_file = None
+prior_file = '/Users/ainsleylewis/Documents/Astronomy/HPC/Lensing/Simulations/Input/System_3/prior.dat'
 critical_curve = False
 
 glafic.init(0.3089901684739047, 0.6910098315260953, -1.0, 0.6736, path, 0.0, 0.0, 2.12, 2.12, 0.01, 0.01, 1, verb=0)
