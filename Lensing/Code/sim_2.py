@@ -245,7 +245,7 @@ def run_glafic_calculation(params, model_name, worker_temp_dir):
     m_val, n_val, o_val = params
     output_path = os.path.join(worker_temp_dir, model_name)
     
-    base_lens_params = [0.297717684517447, 9e11, 1.06, 1.06, 0.1, 55, 30, 0.0]
+    base_lens_params = [0.297717684517447, 9e11, 1.06, 1.06, 0.1, 55, 60, 0.0]
     base_shear_params = [0.261343256161012, 1.0, 1.06, 1.06, 0.0, 0.0, 0.0, 0.0]
 
     current_lens_params = list(base_lens_params)
