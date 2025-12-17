@@ -265,7 +265,7 @@ def run_glafic_calculation(params, model_name, worker_temp_dir):
     glafic.set_lens(1, 'pow', *current_lens_params)
     glafic.set_lens(2, 'pert', *current_shear_params)
     glafic.set_point(1, 1.0, 1.06, 1.06)
-    glafic.setopt_lens(1, 0, 1, 1, 1, 1, 1, 0, 0)
+    glafic.setopt_lens(1, 0, 0, 1, 1, 1, 1, 1, 1)
     glafic.setopt_lens(2, 0, 0, 0, 0, 0, 0, 0, 0)
     glafic.setopt_point(1, 0, 1, 1)
     glafic.model_init(verb=0)
